@@ -20,10 +20,7 @@ lazy val jssrc2cpg         = Projects.jssrc2cpg
 lazy val javasrc2cpg       = Projects.javasrc2cpg
 lazy val jimple2cpg        = Projects.jimple2cpg
 lazy val kotlin2cpg        = Projects.kotlin2cpg
-lazy val rubysrc2cpg       = Projects.rubysrc2cpg
-lazy val gosrc2cpg         = Projects.gosrc2cpg
-lazy val swiftsrc2cpg      = Projects.swiftsrc2cpg
-lazy val csharpsrc2cpg     = Projects.csharpsrc2cpg
+lazy val gosrccpg         = Projects.gosrccpg
 
 lazy val aggregatedProjects: Seq[ProjectReference] = Seq(
   joerncli,
@@ -41,10 +38,7 @@ lazy val aggregatedProjects: Seq[ProjectReference] = Seq(
   javasrc2cpg,
   jimple2cpg,
   kotlin2cpg,
-  rubysrc2cpg,
-  gosrc2cpg,
-  swiftsrc2cpg,
-  csharpsrc2cpg
+  gosrccpg
 )
 
 ThisBuild / libraryDependencies ++= Seq(
