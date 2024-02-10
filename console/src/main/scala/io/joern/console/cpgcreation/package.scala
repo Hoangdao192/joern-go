@@ -18,10 +18,8 @@ package object cpgcreation {
   ): Option[CpgGenerator] = {
     lazy val conf = config.withArgs(args)
     language match {
-      case Languages.CSHARP | Languages.CSHARPSRC => Some(CSharpCpgGenerator(conf, rootPath))
       case Languages.C | Languages.NEWC           => Some(CCpgGenerator(conf, rootPath))
       case Languages.LLVM                         => Some(LlvmCpgGenerator(conf, rootPath))
-      case Languages.GOLANG                       => Some(GoCpgGenerator(conf, rootPath))
       case Languages.JAVA                         => Some(JavaCpgGenerator(conf, rootPath))
       case Languages.JAVASRC                      => Some(JavaSrcCpgGenerator(conf, rootPath))
       case Languages.JSSRC | Languages.JAVASCRIPT =>
@@ -33,8 +31,6 @@ package object cpgcreation {
       case Languages.PHP       => Some(PhpCpgGenerator(conf, rootPath))
       case Languages.GHIDRA    => Some(GhidraCpgGenerator(conf, rootPath))
       case Languages.KOTLIN    => Some(KotlinCpgGenerator(conf, rootPath))
-      case Languages.RUBYSRC   => Some(RubyCpgGenerator(conf, rootPath))
-      case Languages.SWIFTSRC  => Some(SwiftSrcCpgGenerator(conf, rootPath))
       case _                   => None
     }
   }
