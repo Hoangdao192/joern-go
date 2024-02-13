@@ -10,7 +10,9 @@ import scala.language.postfixOps
 
 class AstCreator(rootNode: FileNode, filename: String) (implicit val validationMode: ValidationMode)
   extends AstCreatorBase(filename)
-  with AstForFunctionsCreator
+  with AstForFunctionsCreator 
+    with AstForExpressionCreator 
+    with AstForStatementCreator
   with AstNodeBuilder[Node, AstCreator] {
 
   def createAst(): DiffGraphBuilder = {

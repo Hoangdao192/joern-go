@@ -1,7 +1,30 @@
 package io.joern.gosrccpg.ast.nodes
 
+import com.fasterxml.jackson.annotation.{JsonSubTypes, JsonTypeInfo}
+
 import scala.collection.mutable.ListBuffer
 
+@JsonTypeInfo(
+  use = JsonTypeInfo.Id.NAME,
+  include = JsonTypeInfo.As.PROPERTY,
+  property = "nodeType")
+@JsonSubTypes(Array(
+  new JsonSubTypes.Type(value = classOf[CallExpression], name = "CallExpression"),
+  new JsonSubTypes.Type(value = classOf[Identifier], name = "Identifier"),
+  new JsonSubTypes.Type(value = classOf[BadExpression], name = "BadExpression"),
+  new JsonSubTypes.Type(value = classOf[BasicLiteralExpression], name = "BasicLiteralExpression"),
+  new JsonSubTypes.Type(value = classOf[BinaryExpression], name = "BinaryExpression"),
+  new JsonSubTypes.Type(value = classOf[EllipsisExpression], name = "EllipsisExpression"),
+  new JsonSubTypes.Type(value = classOf[IndexExpression], name = "IndexExpression"),
+  new JsonSubTypes.Type(value = classOf[IndexListExpression], name = "IndexListExpression"),
+  new JsonSubTypes.Type(value = classOf[KeyValueExpression], name = "KeyValueExpression"),
+  new JsonSubTypes.Type(value = classOf[ParenthesizedExpression], name = "ParenthesizedExpression"),
+  new JsonSubTypes.Type(value = classOf[SelectorExpression], name = "SelectorExpression"),
+  new JsonSubTypes.Type(value = classOf[SliceExpression], name = "SliceExpression"),
+  new JsonSubTypes.Type(value = classOf[StarExpression], name = "StarExpression"),
+  new JsonSubTypes.Type(value = classOf[TypeAssertExpression], name = "TypeAssertExpression"),
+  new JsonSubTypes.Type(value = classOf[UnaryExpression], name = "UnaryExpression")
+))
 abstract class Expression extends Node("Expression")
 
 class Identifier extends Expression {

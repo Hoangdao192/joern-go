@@ -1,7 +1,34 @@
 package io.joern.gosrccpg.ast.nodes
 
+import com.fasterxml.jackson.annotation.{JsonSubTypes, JsonTypeInfo}
+
 import scala.collection.mutable.ListBuffer
 
+@JsonTypeInfo(
+  use = JsonTypeInfo.Id.NAME,
+  include = JsonTypeInfo.As.PROPERTY,
+  property = "nodeType")
+@JsonSubTypes(Array(
+  new JsonSubTypes.Type(value = classOf[AssignStatement], name = "AssignStatement"),
+  new JsonSubTypes.Type(value = classOf[BadStatement], name = "BadStatement"),
+  new JsonSubTypes.Type(value = classOf[BlockStatement], name = "BlockStatement"),
+  new JsonSubTypes.Type(value = classOf[BranchStatement], name = "BranchStatement"),
+  new JsonSubTypes.Type(value = classOf[DeclarationStatement], name = "DeclarationStatement"),
+  new JsonSubTypes.Type(value = classOf[DeferStatement], name = "DeferStatement"),
+  new JsonSubTypes.Type(value = classOf[EmptyStatement], name = "EmptyStatement"),
+  new JsonSubTypes.Type(value = classOf[ExpressionStatement], name = "ExpressionStatement"),
+  new JsonSubTypes.Type(value = classOf[ForStatement], name = "ForStatement"),
+  new JsonSubTypes.Type(value = classOf[GoStatement], name = "GoStatement"),
+  new JsonSubTypes.Type(value = classOf[IfStatement], name = "IfStatement"),
+  new JsonSubTypes.Type(value = classOf[IncrementDecrementStatement], name = "IncrementDecrementStatement"),
+  new JsonSubTypes.Type(value = classOf[LabeledStatement], name = "LabeledStatement"),
+  new JsonSubTypes.Type(value = classOf[RangeStatement], name = "RangeStatement"),
+  new JsonSubTypes.Type(value = classOf[ReturnStatement], name = "ReturnStatement"),
+  new JsonSubTypes.Type(value = classOf[SelectStatement], name = "SelectStatement"),
+  new JsonSubTypes.Type(value = classOf[SendStatement], name = "SendStatement"),
+  new JsonSubTypes.Type(value = classOf[SwitchStatement], name = "SwitchStatement"),
+  new JsonSubTypes.Type(value = classOf[TypeSwitchStatement], name = "TypeSwitchStatement")
+))
 abstract class Statement extends Node("Statement")
 
 class AssignStatement extends Statement {

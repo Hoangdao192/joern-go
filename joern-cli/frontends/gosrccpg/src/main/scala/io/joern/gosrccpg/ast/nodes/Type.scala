@@ -1,5 +1,20 @@
 package io.joern.gosrccpg.ast.nodes
 
+import com.fasterxml.jackson.annotation.{JsonSubTypes, JsonTypeInfo}
+
+@JsonTypeInfo(
+  use = JsonTypeInfo.Id.NAME,
+  include = JsonTypeInfo.As.PROPERTY,
+  property = "nodeType"
+)
+@JsonSubTypes(Array(
+  new JsonSubTypes.Type(value = classOf[FunctionType], name = "FunctionType"),
+  new JsonSubTypes.Type(value = classOf[ArrayType], name = "ArrayType"),
+  new JsonSubTypes.Type(value = classOf[ChanelType], name = "ChanelType"),
+  new JsonSubTypes.Type(value = classOf[InterfaceType], name = "InterfaceType"),
+  new JsonSubTypes.Type(value = classOf[MapType], name = "MapType"),
+  new JsonSubTypes.Type(value = classOf[StructType], name = "StructType")
+))
 abstract class Type extends Node("Type")
 
 class FunctionType extends Type {
