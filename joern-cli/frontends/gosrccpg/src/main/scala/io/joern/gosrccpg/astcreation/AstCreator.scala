@@ -1,6 +1,6 @@
 package io.joern.gosrccpg.astcreation
 
-import io.joern.gosrccpg.ast.nodes.{FileNode, FunctionDeclaration, Identifier, Node}
+import io.joern.gosrccpg.ast.nodes.*
 import io.joern.x2cpg.{Ast, AstCreatorBase, AstNodeBuilder, ValidationMode}
 import io.shiftleft.codepropertygraph.generated.nodes.NewNamespaceBlock
 import overflowdb.BatchedUpdate.DiffGraphBuilder
@@ -36,6 +36,8 @@ class AstCreator(rootNode: FileNode, filename: String) (implicit val validationM
         }
       case functionDecl: FunctionDeclaration =>
         astForFunctionDeclaration(filename, functionDecl)
+      case statement: Statement => astForStatement(filename, statement)
+      case expression: Expression => astForExpression(filename, expression)
       case _ =>
         Ast()
     }

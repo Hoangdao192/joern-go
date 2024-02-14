@@ -1,5 +1,6 @@
 package io.joern.gosrccpg.astcreation
 
+import io.joern.gosrccpg.ast.Token
 import io.joern.x2cpg.ValidationMode
 import io.joern.gosrccpg.ast.nodes.*
 import io.joern.x2cpg.Ast
@@ -9,11 +10,17 @@ import io.shiftleft.codepropertygraph.generated.nodes.NewControlStructure
 trait AstForStatementCreator(implicit withSchemaValidation: ValidationMode) { this : AstCreator =>
 
   def astForStatement(fileName: String, statement: Statement): Ast = {
-    var ast : Ast = statement match {
+    val ast: Ast = statement match {
       case ifStatement: IfStatement => astForIfStatement(fileName: String, ifStatement: IfStatement)
+      case switchStatement: SwitchStatement => astForSwitchStatement(fileName, switchStatement)
+      case typeSwitchStatement: TypeSwitchStatement => astForTypeSwitchStatement(fileName, typeSwitchStatement)
+      case forStatement: ForStatement => astForForStatement(fileName, forStatement)
+      case rangeStatement: RangeStatement => astForRangeStatement(fileName, rangeStatement)
+      case blockStatement: BlockStatement => astForBlockStatement(fileName, blockStatement)
+      case branchStatement: BranchStatement => astForBranchStatement(fileName, branchStatement)
+      case _ => Ast()
     }
-    controlStructureNode()
-    return ast
+    ast
   }
 
   private def astForIfStatement(fileName: String, ifStatement: IfStatement): Ast = {
@@ -37,14 +44,14 @@ trait AstForStatementCreator(implicit withSchemaValidation: ValidationMode) { th
       .controlStructureType(ControlStructureTypes.SWITCH)
       .code(conditionAst.toString)
 
-    val switchBodyAst = astForStatement(fileName, switchStatement.body)
+    val switchBodyAst = astForStatement(fileName, switchStatement.body.get)
     Ast(switchNode)
       .withChildren(Seq(conditionAst, switchBodyAst))
       .withConditionEdge(switchNode, conditionAst.root.get)
   }
 
   private def astForTypeSwitchStatement(fileName: String, typeSwitchStatement: TypeSwitchStatement): Ast = {
-    val assignAst = astForStatement(typeSwitchStatement.assign.get)
+    val assignAst = astForStatement(fileName, typeSwitchStatement.assign.get)
 
     val switchNode = NewControlStructure()
       .controlStructureType(ControlStructureTypes.SWITCH)
@@ -70,14 +77,28 @@ trait AstForStatementCreator(implicit withSchemaValidation: ValidationMode) { th
     forAst(forNode, Seq(), Seq(initAst), Seq(conditionAst), Seq(updateAst), bodyAst)
   }
 
-  private def astForRangeStatment(fileName: String, rangeStatement: RangeStatement): Ast = {
-
+  private def astForRangeStatement(fileName: String, rangeStatement: RangeStatement): Ast = {
+    Ast()
   }
 
   private def astForBlockStatement(fileName: String, blockStatement: BlockStatement): Ast = {
     Ast()
   }
 
+  private def astForBranchStatement(fileName: String, branchStatement: BranchStatement): Ast = {
+    var controlStructureType = branchStatement.token match {
+      case Token.Break => ControlStructureTypes.BREAK
+      case Token.Continue => ControlStructureTypes.CONTINUE
+      case Token.Goto => ControlStructureTypes.GOTO
+      case _ => null
+    }
 
+    //  Handle code
+    val controlNode = NewControlStructure()
+      .controlStructureType(controlStructureType)
+      .code(branchStatement.toString)
+
+    Ast(controlNode)
+  }
 
 }
