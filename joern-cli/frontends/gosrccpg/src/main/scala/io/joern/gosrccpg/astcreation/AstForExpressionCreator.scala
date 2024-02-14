@@ -2,7 +2,7 @@ package io.joern.gosrccpg.astcreation
 
 import io.joern.gosrccpg.ast.Token
 import io.joern.x2cpg.ValidationMode
-import io.joern.gosrccpg.ast.nodes.{BinaryExpression, Expression}
+import io.joern.gosrccpg.ast.nodes.{BinaryExpression, Expression, StarExpression, TypeAssertExpression, UnaryExpression}
 import io.joern.x2cpg.Ast
 import io.shiftleft.codepropertygraph.generated.{DispatchTypes, Operators}
 
@@ -10,6 +10,47 @@ trait AstForExpressionCreator(implicit validationMode: ValidationMode) { this: A
   
   def astForExpression(fileName: String, expression: Expression): Ast = {
     Ast()
+  }
+  
+  private def astForStarExpression(fileName: String, starExpression: StarExpression): Ast = {
+    
+  }
+  
+  private def astForTypeAssertExpression(fileName: String, typeAssertExpression: TypeAssertExpression): Ast = {
+    val call = callNode(
+      typeAssertExpression, typeAssertExpression.code, Operators.cast, Operators.cast,
+      DispatchTypes.STATIC_DISPATCH
+    )
+    
+    val expression = astForExpression(fileName, typeAssertExpression.expression.get)
+    val argumentType = astForExpression(fileName, typeAssertExpression.typeExpression.get)
+    
+    callAst(call, Seq(expression, argumentType))
+  }
+
+  //  Unary expression is an expression that have only one operand
+  private def astForUnaryExpression(fileName: String, unaryExpression: UnaryExpression): Ast = {
+    val operand = astForExpression(unaryExpression.expression.get)
+    val operator = unaryExpression.operator match {
+      case Token.Addition => Operators.plus
+      //  a = -b
+      case Token.Subtraction => Operators.subtraction
+      //  a = +b
+      case Token.Multiplication => Operators.minus
+      //  a = &b
+      case Token.And => Operators.addressOf
+      //  a = !b
+      case Token.Not => Operators.logicalNot
+      case _ => "<operator>.unknown"
+    }
+
+    val call = callNode(
+      unaryExpression, unaryExpression.code, operator, operator,
+      DispatchTypes.STATIC_DISPATCH
+    )
+    
+//    operand.t
+    callAst(call, Seq(operand))
   }
 
   private def astForBinaryExpression(fileName: String, binaryExpression: BinaryExpression): Ast = {
@@ -34,7 +75,7 @@ trait AstForExpressionCreator(implicit validationMode: ValidationMode) { this: A
       case Token.LogicalAnd => Operators.logicalAnd
       case Token.Equals => Operators.equals
       case Token.NotEquals => Operators.notEquals
-      case _ => "unknown"
+      case _ => "<operator>.unknown"
     }
 
     val call = callNode(

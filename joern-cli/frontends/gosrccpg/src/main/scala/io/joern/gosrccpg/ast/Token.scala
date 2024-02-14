@@ -27,6 +27,8 @@ object Token extends Enumeration {
   val LogicalOr = 35
   val Equals = 39
   val NotEquals = 44
+  
+  val Not = 43
 //  AND // &
 //  OR // |
 //  XOR // ^
