@@ -30,6 +30,10 @@ abstract class Expression extends Node("Expression")
 class Identifier extends Expression {
   var namePosition: Int = 0
   var name: Option[String] = None
+
+  def this(name: String) = {
+    this.name = Option(name)
+  }
 }
 
 class CallExpression extends Expression {

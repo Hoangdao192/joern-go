@@ -2,7 +2,7 @@ package io.joern.gosrccpg.astcreation
 
 import io.joern.gosrccpg.ast.Token
 import io.joern.x2cpg.ValidationMode
-import io.joern.gosrccpg.ast.nodes.{BinaryExpression, Expression, StarExpression, TypeAssertExpression, UnaryExpression}
+import io.joern.gosrccpg.ast.nodes.{BinaryExpression, Expression, IndexExpression, StarExpression, TypeAssertExpression, UnaryExpression}
 import io.joern.x2cpg.Ast
 import io.shiftleft.codepropertygraph.generated.{DispatchTypes, Operators}
 
@@ -11,9 +11,26 @@ trait AstForExpressionCreator(implicit validationMode: ValidationMode) { this: A
   def astForExpression(fileName: String, expression: Expression): Ast = {
     Ast()
   }
-  
+
+  //  Example: array[0]
+  private def astForIndexExpression(fileName: String, indexExpression: IndexExpression): Ast = {
+    val call = callNode(
+      indexExpression, indexExpression.code, Operators.indirectIndexAccess,
+      Operators.indirectIndexAccess, DispatchTypes.STATIC_DISPATCH
+    )
+
+    val expression = astForExpression(fileName, indexExpression.expression.get)
+    val index = astForExpression(fileName, indexExpression.index.get)
+    callAst(call, Seq(expression, index))
+  }
+
   private def astForStarExpression(fileName: String, starExpression: StarExpression): Ast = {
-    
+    val operand = astForExpression(fileName, starExpression.expression.get)
+    val call = callNode(
+      starExpression, starExpression.code, Operators.indirection, Operators.indirection,
+      DispatchTypes.STATIC_DISPATCH
+    )
+    callAst(call, Seq(operand))
   }
   
   private def astForTypeAssertExpression(fileName: String, typeAssertExpression: TypeAssertExpression): Ast = {
@@ -30,7 +47,7 @@ trait AstForExpressionCreator(implicit validationMode: ValidationMode) { this: A
 
   //  Unary expression is an expression that have only one operand
   private def astForUnaryExpression(fileName: String, unaryExpression: UnaryExpression): Ast = {
-    val operand = astForExpression(unaryExpression.expression.get)
+    val operand = astForExpression(fileName, unaryExpression.expression.get)
     val operator = unaryExpression.operator match {
       case Token.Addition => Operators.plus
       //  a = -b
