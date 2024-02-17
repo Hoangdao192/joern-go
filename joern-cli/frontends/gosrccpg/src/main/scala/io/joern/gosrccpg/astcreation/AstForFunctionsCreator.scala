@@ -1,55 +1,30 @@
 package io.joern.gosrccpg.astcreation
 
-import io.joern.gosrccpg.ast.nodes.{Identifier, *}
-import io.joern.x2cpg.ValidationMode
-import io.shiftleft.codepropertygraph.generated.nodes.NewMethodReturn
-import io.joern.x2cpg.Ast
+import io.joern.gosrccpg.ast.nodes.*
+import io.joern.x2cpg.{Ast, ValidationMode}
 
-import scala.collection.mutable.ListBuffer
+trait AstForFunctionsCreator(implicit withSchemaValidation: ValidationMode) {
+    this: AstCreator =>
 
-trait AstForFunctionsCreator(implicit withSchemaValidation: ValidationMode) { this: AstCreator =>
+    def astForFunctionDeclaration(fileName: String, functionDecl: FunctionDeclaration): Ast = {
 
-  def astForFunctionDeclaration(fileName: String, functionDecl: FunctionDeclaration): Ast = {
+        val (params, returnNode) = generateNodeFromFunctionType(fileName, functionDecl.functionType.get)
 
-    val functionTypeIdentifier = getFunctionReturnType(functionDecl)
-    val returnNode = methodReturnNode(
-      functionTypeIdentifier, functionTypeIdentifier.name.get
-    )
+        val functionName = functionDecl.name.get.name.get
 
-    functionDecl.functionType.get.params
+        val methodNode_ = methodNode(
+            functionDecl, functionName,
+            functionDecl.code, functionName, fileName
+        )
 
-    val functionName = functionDecl.name.get.name.get
+        val bodyAst = astForStatement(fileName, functionDecl.body.get)
 
-    val methodNode_ = methodNode(
-      functionDecl, functionName,
-      functionDecl.code, functionName, fileName
-    )
-
-    methodAst(
-      methodNode_,
-      List(),
-      Ast(),
-      NewMethodReturn(),
-      List()
-    )
-  }
-
-  private def getFunctionReturnType(functionDecl: FunctionDeclaration): Identifier = {
-    val functionType: FunctionType = functionDecl.functionType.get;
-    val fieldList: FieldList = functionType.results.get
-    val fields: ListBuffer[Field] = fieldList.fields
-    var typeName = fields.map(field => {
-      val expression = field.typeExpression.get
-      expression match {
-        case identifier: Identifier => identifier.name.get
-        case _ =>
-          println("[getFunctionReturnType] Not handled type expression " + expression.getClass.getTypeName)
-          ""
-      }
-    }).mkString("(", ", ", ")")
-    val identifier = Identifier()
-    identifier.name = Option(typeName)
-    identifier
-  }
+        methodAst(
+            methodNode_,
+            params.map(param => Ast(param)),
+            bodyAst,
+            returnNode
+        )
+    }
 
 }
