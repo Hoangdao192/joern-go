@@ -3,6 +3,7 @@ package io.joern.gosrccpg.astcreation
 import io.joern.gosrccpg.ast.nodes.*
 import io.joern.x2cpg.{Ast, AstCreatorBase, AstNodeBuilder, ValidationMode}
 import io.shiftleft.codepropertygraph.generated.nodes.NewNamespaceBlock
+import org.slf4j.{Logger, LoggerFactory}
 import overflowdb.BatchedUpdate.DiffGraphBuilder
 
 import scala.collection.mutable.ListBuffer
@@ -14,7 +15,11 @@ class AstCreator(rootNode: FileNode, filename: String)(implicit val validationMo
         with AstForFunctionsCreator
         with AstForExpressionCreator
         with AstForStatementCreator
+        with AstForDeclarationCreator
+        with AstForSpecificationCreator
         with AstNodeBuilder[Node, AstCreator] {
+
+    protected val logger: Logger = LoggerFactory.getLogger(classOf[AstCreator])
 
     def createAst(): DiffGraphBuilder = {
         val ast = astForGoAstNode(rootNode)
@@ -30,7 +35,7 @@ class AstCreator(rootNode: FileNode, filename: String)(implicit val validationMo
                     childrenAst.addOne(astForGoAstNode(decl))
                 }
                 if (fileNode.name.isDefined) {
-                    var packageIdentifier = fileNode.name
+                    val packageIdentifier = fileNode.name
                     astForPackageNode(filename, packageIdentifier, childrenAst.toList)
                 } else {
                     Ast()
@@ -39,8 +44,10 @@ class AstCreator(rootNode: FileNode, filename: String)(implicit val validationMo
                 astForFunctionDeclaration(filename, functionDecl)
             case statement: Statement => astForStatement(filename, statement)
             case expression: Expression => astForExpression(filename, expression)
-            case _ =>
+            case unknown => {
+                logger.warn(s"Unknown node type")
                 Ast()
+            }
         }
         Ast.storeInDiffGraph(ast, diffGraph)
         ast

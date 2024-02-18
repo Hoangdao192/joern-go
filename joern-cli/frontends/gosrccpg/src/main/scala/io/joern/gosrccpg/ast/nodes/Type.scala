@@ -15,7 +15,7 @@ import com.fasterxml.jackson.annotation.{JsonSubTypes, JsonTypeInfo}
   new JsonSubTypes.Type(value = classOf[MapType], name = "MapType"),
   new JsonSubTypes.Type(value = classOf[StructType], name = "StructType")
 ))
-abstract class Type extends Node("Type")
+abstract class Type extends Expression
 
 class FunctionType extends Type {
   var function: Int = 0

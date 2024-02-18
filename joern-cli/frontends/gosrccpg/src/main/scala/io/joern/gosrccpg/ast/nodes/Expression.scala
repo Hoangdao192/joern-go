@@ -23,7 +23,8 @@ import scala.collection.mutable.ListBuffer
     new JsonSubTypes.Type(value = classOf[SliceExpression], name = "SliceExpression"),
     new JsonSubTypes.Type(value = classOf[StarExpression], name = "StarExpression"),
     new JsonSubTypes.Type(value = classOf[TypeAssertExpression], name = "TypeAssertExpression"),
-    new JsonSubTypes.Type(value = classOf[UnaryExpression], name = "UnaryExpression")
+    new JsonSubTypes.Type(value = classOf[UnaryExpression], name = "UnaryExpression"),
+    new JsonSubTypes.Type(value = classOf[FunctionLiteral], name = "FunctionLiteral")
 ))
 abstract class Expression extends Node("Expression")
 
@@ -126,6 +127,14 @@ class FunctionLiteral extends Expression {
     @JsonProperty("type")
     var functionType: Option[FunctionType] = None
     var body: Option[BlockStatement] = None
+}
+
+class CompositeLiteral extends Expression {
+    var typeExpression: Option[Expression] = None
+    var lbrace: Int = -1
+    var rbrace: Int = -1
+    var elements: ListBuffer[Expression] = ListBuffer()
+    var incomplete: Boolean = false
 }
 
 

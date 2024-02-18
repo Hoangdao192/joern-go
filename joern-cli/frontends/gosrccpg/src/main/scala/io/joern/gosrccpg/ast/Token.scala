@@ -6,6 +6,13 @@ object Token extends Enumeration {
   val Continue = 65
   val Goto = 73
 
+  //  Basic literal
+  val Int = 5 // 12345
+  val Float = 6 // 123.45
+  val Imag = 7 // 123.45i
+  val Char = 8 // 'a'
+  val String = 9 // "abc"
+
   // Operators and delimiters
   val Addition = 12 // +
   val Subtraction = 13 // -
@@ -29,6 +36,13 @@ object Token extends Enumeration {
   val NotEquals = 44
   
   val Not = 43
+  
+  //  Generic declaration
+  val Import = 75
+  val Constant = 64
+  val Type = 84
+  val Var = 85
+  
 //  AND // &
 //  OR // |
 //  XOR // ^
