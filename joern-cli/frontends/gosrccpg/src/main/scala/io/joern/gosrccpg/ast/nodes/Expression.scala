@@ -12,7 +12,7 @@ import scala.collection.mutable.ListBuffer
     new JsonSubTypes.Type(value = classOf[CallExpression], name = "CallExpression"),
     new JsonSubTypes.Type(value = classOf[Identifier], name = "Identifier"),
     new JsonSubTypes.Type(value = classOf[BadExpression], name = "BadExpression"),
-    new JsonSubTypes.Type(value = classOf[BasicLiteralExpression], name = "BasicLiteralExpression"),
+    new JsonSubTypes.Type(value = classOf[BasicLiteralExpression], name = "BasicLiteral"),
     new JsonSubTypes.Type(value = classOf[BinaryExpression], name = "BinaryExpression"),
     new JsonSubTypes.Type(value = classOf[EllipsisExpression], name = "EllipsisExpression"),
     new JsonSubTypes.Type(value = classOf[IndexExpression], name = "IndexExpression"),
@@ -24,7 +24,15 @@ import scala.collection.mutable.ListBuffer
     new JsonSubTypes.Type(value = classOf[StarExpression], name = "StarExpression"),
     new JsonSubTypes.Type(value = classOf[TypeAssertExpression], name = "TypeAssertExpression"),
     new JsonSubTypes.Type(value = classOf[UnaryExpression], name = "UnaryExpression"),
-    new JsonSubTypes.Type(value = classOf[FunctionLiteral], name = "FunctionLiteral")
+    new JsonSubTypes.Type(value = classOf[FunctionLiteral], name = "FunctionLiteral"),
+    new JsonSubTypes.Type(value = classOf[CompositeLiteral], name = "CompositeLiteral"),
+
+    new JsonSubTypes.Type(value = classOf[FunctionType], name = "FunctionType"),
+    new JsonSubTypes.Type(value = classOf[ArrayType], name = "ArrayType"),
+    new JsonSubTypes.Type(value = classOf[ChanelType], name = "ChanelType"),
+    new JsonSubTypes.Type(value = classOf[InterfaceType], name = "InterfaceType"),
+    new JsonSubTypes.Type(value = classOf[MapType], name = "MapType"),
+    new JsonSubTypes.Type(value = classOf[StructType], name = "StructType")
 ))
 abstract class Expression extends Node("Expression")
 

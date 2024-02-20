@@ -25,7 +25,7 @@ class AstCreationPass(cpg:Cpg, config:Config, workingDir: String, report:Report 
   private val jsonParser: JsonParser = new JsonParser()
 
   override def generateParts(): Array[String] = {
-    val binary = "/home/hoangdao/Workspace/Go/Joern/joern-cli/frontends/gosrccpg/bin/go-parser/goparser"
+    val binary = "/home/hoangdao/Workspace/Scala/Joern/joern-cli/frontends/gosrccpg/bin/go-parser/goparser"
     val command: String = s"$binary ${config.inputPath} $workingDir"
     ExternalCommand.run(command, ".")
 //    val arr = SourceFiles.determine(

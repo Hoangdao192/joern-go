@@ -5,6 +5,7 @@ import io.joern.x2cpg.{Ast, AstCreatorBase, AstNodeBuilder, ValidationMode}
 import io.shiftleft.codepropertygraph.generated.nodes.NewNamespaceBlock
 import org.slf4j.{Logger, LoggerFactory}
 import overflowdb.BatchedUpdate.DiffGraphBuilder
+import com.fasterxml.jackson.databind.ObjectMapper
 
 import scala.collection.mutable.ListBuffer
 import scala.language.postfixOps
@@ -12,7 +13,6 @@ import scala.language.postfixOps
 class AstCreator(rootNode: FileNode, filename: String)(implicit val validationMode: ValidationMode)
     extends AstCreatorBase(filename)
         with AstCreatorHelper
-        with AstForFunctionsCreator
         with AstForExpressionCreator
         with AstForStatementCreator
         with AstForDeclarationCreator
@@ -20,37 +20,38 @@ class AstCreator(rootNode: FileNode, filename: String)(implicit val validationMo
         with AstNodeBuilder[Node, AstCreator] {
 
     protected val logger: Logger = LoggerFactory.getLogger(classOf[AstCreator])
+    protected val objectMapper: ObjectMapper = ObjectMapper()
 
     def createAst(): DiffGraphBuilder = {
-        val ast = astForGoAstNode(rootNode)
-        Ast.storeInDiffGraph(ast, diffGraph)
+        val asts = astForGoAstNode(rootNode)
+        for (ast <- asts) {
+            Ast.storeInDiffGraph(ast, diffGraph)
+        }
         diffGraph
     }
 
-    private def astForGoAstNode(node: Node): Ast = {
-        val ast: Ast = node match {
+    private def astForGoAstNode(node: Node): Seq[Ast] = {
+        val asts: Seq[Ast] = node match {
             case fileNode: FileNode =>
                 val childrenAst = ListBuffer[Ast]()
                 for (decl <- fileNode.declarations) {
-                    childrenAst.addOne(astForGoAstNode(decl))
+                    childrenAst.addAll(astForGoAstNode(decl))
                 }
                 if (fileNode.name.isDefined) {
                     val packageIdentifier = fileNode.name
-                    astForPackageNode(filename, packageIdentifier, childrenAst.toList)
+                    Seq(astForPackageNode(filename, packageIdentifier, childrenAst.toList))
                 } else {
-                    Ast()
+                    Seq()
                 }
-            case functionDecl: FunctionDeclaration =>
-                astForFunctionDeclaration(filename, functionDecl)
-            case statement: Statement => astForStatement(filename, statement)
-            case expression: Expression => astForExpression(filename, expression)
+            case declaration: Declaration => astForDeclaration(filename, declaration)
+            case statement: Statement => Seq(astForStatement(filename, statement))
+            case expression: Expression => Seq(astForExpression(filename, expression))
             case unknown => {
                 logger.warn(s"Unknown node type")
-                Ast()
+                Seq()
             }
         }
-        Ast.storeInDiffGraph(ast, diffGraph)
-        ast
+        asts
     }
 
     private def astForPackageNode(filename: String,

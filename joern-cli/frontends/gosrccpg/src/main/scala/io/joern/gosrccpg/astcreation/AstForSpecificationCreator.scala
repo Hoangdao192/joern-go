@@ -41,21 +41,23 @@ trait AstForSpecificationCreator(implicit schemaValidationMode: ValidationMode) 
 
         var index: Int = 0
         for (identifier <- identifiers) {
-            var value = values(index)
-            if (value.isInstanceOf[FunctionLiteral]) {
-                asts.addOne(
-                    astForExpression(fileName, value.asInstanceOf[FunctionLiteral])
-                )
-            } else {
-                //  TODO: Handle type
-                val local = localNode(
-                    identifier, identifier.name.get,
-                    identifier.code,
-                    ""
-                )
-                asts.addOne(Ast(local))
+            if (values.length > index) {
+                var value = values(index)
+                if (value.isInstanceOf[FunctionLiteral]) {
+                    asts.addOne(
+                        astForExpression(fileName, value.asInstanceOf[FunctionLiteral])
+                    )
+                } else {
+                    //  TODO: Handle type
+                    val local = localNode(
+                        identifier, identifier.name.get,
+                        identifier.code,
+                        ""
+                    )
+                    asts.addOne(Ast(local))
+                }
+                index += 1
             }
-            index += 1
         }
 
         asts.toList

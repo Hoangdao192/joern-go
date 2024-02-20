@@ -1,6 +1,6 @@
 package io.joern.gosrccpg.ast.nodes
 
-import com.fasterxml.jackson.annotation.{JsonSubTypes, JsonTypeInfo}
+import com.fasterxml.jackson.annotation.{JsonProperty, JsonSubTypes, JsonTypeInfo}
 
 import scala.collection.mutable.ListBuffer
 
@@ -23,6 +23,7 @@ class FunctionDeclaration extends Declaration {
   var documentation: Option[CommentGroup] = None
   var receiver: Option[FieldList] = None
   var name: Option[Identifier] = None
+  @JsonProperty("type")
   var functionType: Option[FunctionType] = None
   var body: Option[BlockStatement] = None
 }
