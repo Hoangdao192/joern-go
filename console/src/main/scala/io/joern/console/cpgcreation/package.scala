@@ -31,6 +31,7 @@ package object cpgcreation {
       case Languages.PHP       => Some(PhpCpgGenerator(conf, rootPath))
       case Languages.GHIDRA    => Some(GhidraCpgGenerator(conf, rootPath))
       case Languages.KOTLIN    => Some(KotlinCpgGenerator(conf, rootPath))
+      case Languages.GOLANG    => Some(GoCpgGenerator(conf, rootPath))
       case _                   => None
     }
   }

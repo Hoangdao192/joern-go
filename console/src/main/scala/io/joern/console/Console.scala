@@ -461,7 +461,6 @@ class Console[T <: Project](loader: WorkspaceLoader[T], baseDir: File = File.cur
 
 object Console {
   val nameOfLegacyCpgInProject = "cpg.bin.zip"
-
   def deriveNameFromInputPath[T <: Project](inputPath: String, workspace: WorkspaceManager[T]): String = {
     val name    = File(inputPath).name
     val project = workspace.project(name)

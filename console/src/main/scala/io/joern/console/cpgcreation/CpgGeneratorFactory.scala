@@ -56,6 +56,7 @@ class CpgGeneratorFactory(config: ConsoleConfig) {
   def languageIsKnown(language: String): Boolean = CpgGeneratorFactory.KNOWN_LANGUAGES.contains(language)
 
   def runGenerator(generator: CpgGenerator, inputPath: String, outputPath: String): Try[Path] = {
+    println(outputPath)
     val outputFileOpt: Try[File] =
       generator.generate(inputPath, outputPath).map(File(_))
     outputFileOpt.map { outFile =>
