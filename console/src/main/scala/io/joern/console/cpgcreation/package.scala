@@ -18,19 +18,19 @@ package object cpgcreation {
   ): Option[CpgGenerator] = {
     lazy val conf = config.withArgs(args)
     language match {
-      case Languages.C | Languages.NEWC           => Some(CCpgGenerator(conf, rootPath))
-      case Languages.LLVM                         => Some(LlvmCpgGenerator(conf, rootPath))
-      case Languages.JAVA                         => Some(JavaCpgGenerator(conf, rootPath))
-      case Languages.JAVASRC                      => Some(JavaSrcCpgGenerator(conf, rootPath))
-      case Languages.JSSRC | Languages.JAVASCRIPT =>
-        val jssrc = JsSrcCpgGenerator(conf, rootPath)
-        if (jssrc.isAvailable) Some(jssrc)
-        else Some(JsCpgGenerator(conf, rootPath))
-      case Languages.PYTHONSRC => Some(PythonSrcCpgGenerator(conf, rootPath))
-      case Languages.PYTHON    => Some(PyCpgGenerator(conf, rootPath))
-      case Languages.PHP       => Some(PhpCpgGenerator(conf, rootPath))
-      case Languages.GHIDRA    => Some(GhidraCpgGenerator(conf, rootPath))
-      case Languages.KOTLIN    => Some(KotlinCpgGenerator(conf, rootPath))
+//      case Languages.C | Languages.NEWC           => Some(CCpgGenerator(conf, rootPath))
+//      case Languages.LLVM                         => Some(LlvmCpgGenerator(conf, rootPath))
+//      case Languages.JAVA                         => Some(JavaCpgGenerator(conf, rootPath))
+//      case Languages.JAVASRC                      => Some(JavaSrcCpgGenerator(conf, rootPath))
+//      case Languages.JSSRC | Languages.JAVASCRIPT =>
+//        val jssrc = JsSrcCpgGenerator(conf, rootPath)
+//        if (jssrc.isAvailable) Some(jssrc)
+//        else Some(JsCpgGenerator(conf, rootPath))
+//      case Languages.PYTHONSRC => Some(PythonSrcCpgGenerator(conf, rootPath))
+//      case Languages.PYTHON    => Some(PyCpgGenerator(conf, rootPath))
+//      case Languages.PHP       => Some(PhpCpgGenerator(conf, rootPath))
+//      case Languages.GHIDRA    => Some(GhidraCpgGenerator(conf, rootPath))
+//      case Languages.KOTLIN    => Some(KotlinCpgGenerator(conf, rootPath))
       case Languages.GOLANG    => Some(GoCpgGenerator(conf, rootPath))
       case _                   => None
     }

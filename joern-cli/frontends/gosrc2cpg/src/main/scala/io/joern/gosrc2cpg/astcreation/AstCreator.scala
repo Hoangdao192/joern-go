@@ -46,6 +46,7 @@ class AstCreator(rootNode: FileNode, filename: String)(implicit val validationMo
             case declaration: Declaration => astForDeclaration(filename, declaration)
             case statement: Statement => Seq(astForStatement(filename, statement))
             case expression: Expression => Seq(astForExpression(filename, expression))
+            case specification: Specification => astForSpecification(filename, specification)
             case unknown => {
                 logger.warn(s"Unknown node type")
                 Seq()
