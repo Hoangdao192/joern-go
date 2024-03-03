@@ -12,7 +12,7 @@ import scala.collection.mutable.ListBuffer
   new JsonSubTypes.Type(value = classOf[FunctionDeclaration], name = "FunctionDeclaration"),
   new JsonSubTypes.Type(value = classOf[GenericDeclaration], name = "GenericDeclaration")
 ))
-abstract class Declaration extends Node("Declaration")
+abstract class Declaration extends Node
 
 class BadDeclaration extends Declaration {
   var from: Int = 0

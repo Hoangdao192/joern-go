@@ -13,7 +13,7 @@ import scala.collection.mutable.ListBuffer
   new JsonSubTypes.Type(value = classOf[TypeSpecification], name = "TypeSpecification"),
   new JsonSubTypes.Type(value = classOf[ValueSpecification], name = "ValueSpecification")
 ))
-abstract class Specification extends Node("Specification")
+abstract class Specification extends Node
 
 class ImportSpecification extends Specification {
   var documentation: Option[CommentGroup] = None

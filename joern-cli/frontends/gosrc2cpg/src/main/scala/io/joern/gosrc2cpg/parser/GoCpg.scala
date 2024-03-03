@@ -2,6 +2,7 @@ package io.joern.gosrc2cpg.parser
 
 import io.joern.gosrc2cpg.Config
 import io.joern.gosrc2cpg.Frontend.defaultConfig
+import io.joern.gosrc2cpg.ast.GoModule
 import io.joern.gosrc2cpg.passes.AstCreationPass
 import io.joern.x2cpg.passes.frontend.MetaDataPass
 import io.joern.x2cpg.utils.Report
@@ -23,9 +24,10 @@ class GoCpg extends X2CpgFrontend[Config] {
         }
 
         X2Cpg.withNewEmptyCpg(config.outputPath, config) { (cpg, config) =>
+            val goModule = GoModule(config)
             better.files.File.usingTemporaryDirectory("gosrccpg_tmp") { tempWorkingDir =>
                 new MetaDataPass(cpg, Languages.GOLANG, config.inputPath).createAndApply()
-                val astCreationPass = new AstCreationPass(cpg, config, tempWorkingDir.pathAsString, report)
+                val astCreationPass = new AstCreationPass(cpg, config, tempWorkingDir.pathAsString, goModule, report)
                 astCreationPass.createAndApply()
             }
         }

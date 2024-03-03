@@ -29,7 +29,7 @@ import scala.collection.mutable.ListBuffer
   new JsonSubTypes.Type(value = classOf[SwitchStatement], name = "SwitchStatement"),
   new JsonSubTypes.Type(value = classOf[TypeSwitchStatement], name = "TypeSwitchStatement")
 ))
-abstract class Statement extends Node("Statement")
+abstract class Statement extends Node
 
 class AssignStatement extends Statement {
   var lhs: ListBuffer[Expression] = new ListBuffer()

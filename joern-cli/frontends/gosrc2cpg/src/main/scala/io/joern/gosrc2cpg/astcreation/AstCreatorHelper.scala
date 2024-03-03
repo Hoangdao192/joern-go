@@ -1,14 +1,36 @@
 package io.joern.gosrc2cpg.astcreation
 
+import io.joern.gosrc2cpg.ast.GoModule
 import io.joern.gosrc2cpg.ast.nodes.*
 import io.joern.x2cpg.{Ast, Defines, ValidationMode}
 import io.shiftleft.codepropertygraph.generated.EvaluationStrategies
 import io.shiftleft.codepropertygraph.generated.nodes.{NewMethodParameterIn, NewMethodReturn, NewNode, NewUnknown}
 
+import java.nio.file.Paths
 import scala.collection.mutable.ListBuffer
 
 trait AstCreatorHelper(implicit withSchemaValidation: ValidationMode) {
     this: AstCreator =>
+
+    def getPackageFullname(goModule: GoModule, packageFilePath: String, packageIdentifier: Identifier): String = {
+        val relativePath = Paths.get(goModule.modulePath).relativize(
+            Paths.get(packageFilePath).getParent
+        ).toString
+        val packageName = packageIdentifier.name match {
+            case Some(_name) => _name
+            case None =>
+                logger.warn(s"Not found package name in file $packageFilePath")
+                ""
+        }
+        var fullname = s"${goModule.moduleName}"
+        if (relativePath.trim.nonEmpty) {
+            fullname = s"$fullname.${relativePath.replace("/", ".")}"
+        }
+        if (packageName.trim.nonEmpty) {
+            fullname = s"$fullname.$packageName"
+        }
+        fullname
+    }
 
     def generateNodeFromFunctionType(fileName: String, functionType: FunctionType): (Seq[NewMethodParameterIn], NewMethodReturn) = {
         val functionTypeIdentifier = getFunctionReturnType(functionType)

@@ -1,6 +1,7 @@
 package io.joern.gosrc2cpg.passes;
 
 import io.joern.gosrc2cpg.Config
+import io.joern.gosrc2cpg.ast.GoModule
 import io.joern.gosrc2cpg.ast.nodes.FileNode
 import io.joern.gosrc2cpg.astcreation.AstCreator
 import io.joern.gosrc2cpg.parser.JsonParser
@@ -17,7 +18,7 @@ import scala.collection.mutable.ListBuffer
 import scala.reflect.{ClassTag, classTag}
 import scala.util.matching.Regex;
 
-class AstCreationPass(cpg:Cpg, config:Config, workingDir: String, report:Report = new Report())
+class AstCreationPass(cpg:Cpg, config:Config, workingDir: String, goModule: GoModule, report:Report = new Report())
         extends ConcurrentWriterCpgPass[String](cpg) {
 
   private val sourceFileExtension: Set[String] = Set(".go")
@@ -68,7 +69,7 @@ class AstCreationPass(cpg:Cpg, config:Config, workingDir: String, report:Report 
     val (gotCpg, duration) = TimeUtils.time {
       val parsedFile: FileNode = jsonParser.parse(fileName)
       val localDiff = new AstCreator(
-        parsedFile, fileName
+        parsedFile, fileName, goModule
       )(config.schemaValidation).createAst()
       builder.absorb(localDiff)
     }

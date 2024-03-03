@@ -2,15 +2,17 @@ package io.joern.gosrc2cpg.astcreation
 
 import io.joern.gosrc2cpg.ast.nodes.*
 import io.joern.x2cpg.{Ast, AstCreatorBase, AstNodeBuilder, ValidationMode}
-import io.shiftleft.codepropertygraph.generated.nodes.NewNamespaceBlock
+import io.shiftleft.codepropertygraph.generated.nodes.{NewNamespaceBlock, NewNode}
 import org.slf4j.{Logger, LoggerFactory}
 import overflowdb.BatchedUpdate.DiffGraphBuilder
 import com.fasterxml.jackson.databind.ObjectMapper
+import io.joern.gosrc2cpg.ast.GoModule
 
+import java.util
 import scala.collection.mutable.ListBuffer
 import scala.language.postfixOps
 
-class AstCreator(rootNode: FileNode, filename: String)(implicit val validationMode: ValidationMode)
+class AstCreator(rootNode: FileNode, filename: String, goModule: GoModule)(implicit val validationMode: ValidationMode)
     extends AstCreatorBase(filename)
         with AstCreatorHelper
         with AstForExpressionCreator
@@ -21,28 +23,37 @@ class AstCreator(rootNode: FileNode, filename: String)(implicit val validationMo
 
     protected val logger: Logger = LoggerFactory.getLogger(classOf[AstCreator])
     protected val objectMapper: ObjectMapper = ObjectMapper()
+    protected val namespaceStack: util.Stack[NewNode] = new util.Stack()
 
     def createAst(): DiffGraphBuilder = {
-        val asts = astForGoAstNode(rootNode)
-        for (ast <- asts) {
-            Ast.storeInDiffGraph(ast, diffGraph)
-        }
+        val ast = astForTranslationUnit(rootNode)
+//        val asts = astForGoAstNode(rootNode)
+//        for (ast <- asts) {
+//            Ast.storeInDiffGraph(ast, diffGraph)
+//        }
+        Ast.storeInDiffGraph(ast, diffGraph)
         diffGraph
+    }
+
+    private def astForTranslationUnit(root: FileNode): Ast = {
+        val namespaceAst = root.name match {
+            case Some(packageIdent) => astForPackageNode (root.filePath, root.name)
+            case None => Ast(NewNamespaceBlock().name("\\").fullName(goModule.moduleName).filename(root.filePath))
+        }
+
+        namespaceStack.push(namespaceAst.nodes.head)
+        
+        val childrenAst = ListBuffer[Ast]()
+        for (decl <- root.declarations) {
+            childrenAst.addAll(astForGoAstNode(decl))
+        }
+        
+        namespaceStack.pop()
+        namespaceAst.withChildren(childrenAst)
     }
 
     private def astForGoAstNode(node: Node): Seq[Ast] = {
         val asts: Seq[Ast] = node match {
-            case fileNode: FileNode =>
-                val childrenAst = ListBuffer[Ast]()
-                for (decl <- fileNode.declarations) {
-                    childrenAst.addAll(astForGoAstNode(decl))
-                }
-                if (fileNode.name.isDefined) {
-                    val packageIdentifier = fileNode.name
-                    Seq(astForPackageNode(filename, packageIdentifier, childrenAst.toList))
-                } else {
-                    Seq()
-                }
             case declaration: Declaration => astForDeclaration(filename, declaration)
             case statement: Statement => Seq(astForStatement(filename, statement))
             case expression: Expression => Seq(astForExpression(filename, expression))
@@ -56,22 +67,22 @@ class AstCreator(rootNode: FileNode, filename: String)(implicit val validationMo
     }
 
     private def astForPackageNode(filename: String,
-                                  packageIdentifier: Option[Identifier],
-                                  children: List[Ast] = List()): Ast = {
+                                  packageIdentifier: Option[Identifier]): Ast = {
         val namespaceBlock = packageIdentifier match {
             case Some(packageDecl) =>
+                val packageFullname = getPackageFullname(goModule, filename, packageDecl)
                 NewNamespaceBlock()
                     .name(packageDecl.name.get)
-                    .fullName(packageDecl.name.get)
+                    .fullName(packageFullname)
                     .filename(filename)
             case None =>
                 NewNamespaceBlock()
-                    .name("Global")
-                    .fullName("Global")
+                    .name("\\")
+                    .fullName(goModule.moduleName)
                     .filename(filename)
         }
 
-        Ast(namespaceBlock).withChildren(children)
+        Ast(namespaceBlock)
     }
 
     //  TODO: Need implements correctly

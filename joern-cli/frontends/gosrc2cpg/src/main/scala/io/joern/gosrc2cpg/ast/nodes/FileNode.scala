@@ -3,7 +3,7 @@ package io.joern.gosrc2cpg.ast.nodes
 import scala.collection.mutable.ListBuffer
 
 
-class FileNode extends Node("File") {
+class FileNode extends Node {
   var documentation: Option[CommentGroup] = None
   var packagePosition: Int = 0
   var name: Option[Identifier] = None
@@ -14,4 +14,5 @@ class FileNode extends Node("File") {
   var unresolved: ListBuffer[Identifier] = new ListBuffer()
   var comments: ListBuffer[CommentGroup] = new ListBuffer()
   var goVersion: String = ""
+  var filePath: String = ""
 }

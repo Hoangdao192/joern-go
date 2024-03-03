@@ -4,6 +4,7 @@ import io.joern.gosrc2cpg.ast.nodes.*
 import io.joern.x2cpg.ValidationMode
 import io.joern.x2cpg.Ast
 import io.joern.gosrc2cpg.ast.*
+import io.shiftleft.codepropertygraph.generated.nodes.{NewMethod, NewNamespaceBlock}
 
 import scala.collection.mutable.ListBuffer
 
@@ -24,7 +25,7 @@ trait AstForDeclarationCreator(implicit schemaValidationMode: ValidationMode) { 
         }
     }
 
-    def astForFunctionDeclaration(fileName: String, functionDecl: FunctionDeclaration): Ast = {
+    private def astForFunctionDeclaration(fileName: String, functionDecl: FunctionDeclaration): Ast = {
         if (functionDecl == null) {
             return Ast()
         }
@@ -34,13 +35,22 @@ trait AstForDeclarationCreator(implicit schemaValidationMode: ValidationMode) { 
                 val (params, returnNode) = generateNodeFromFunctionType(fileName, functionDecl.functionType.get)
 
                 val functionName = functionDecl.name.get.name.get
+                val methodFullName = namespaceStack.peek() match {
+                    case namespaceBlock: NewNamespaceBlock => namespaceBlock.fullName
+                    case methodNode: NewMethod => methodNode.fullName
+                    case _ => functionName
+                }
 
                 val methodNode_ = methodNode(
                     functionDecl, functionName,
-                    functionDecl.code, functionName, fileName
+                    functionDecl.code, methodFullName, None, fileName
                 )
 
+                namespaceStack.push(methodNode_)
+
                 val bodyAst = astForStatement(fileName, functionDecl.body.get)
+
+                namespaceStack.pop()
 
                 methodAst(
                     methodNode_,
@@ -50,7 +60,7 @@ trait AstForDeclarationCreator(implicit schemaValidationMode: ValidationMode) { 
                 )
             }
             case None => {
-                logger.warn(s"Unhandled function declaration")
+                logger.warn(s"Unhandled function declaration at $fileName")
                 astForUnhandledNode(fileName, functionDecl)
             }
         }

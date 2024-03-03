@@ -15,7 +15,10 @@ import scala.collection.mutable.ListBuffer
     new JsonSubTypes.Type(value = classOf[Field], name = "Field"),
     new JsonSubTypes.Type(value = classOf[FieldList], name = "FieldList"),
 ))
-abstract class Node(val nodeType: String) {
+abstract class Node {
+    @JsonProperty("nodeType")
+    var nodeType: String = ""
+    protected var id: String = ""
     protected var start: Int = 0
     protected var end: Int = 0
     protected val children: ListBuffer[Node] = ListBuffer()
@@ -32,6 +35,8 @@ abstract class Node(val nodeType: String) {
     def addChild(node: Node): Unit = {
         children.addOne(node)
     }
+
+//    def nodeType: String = _nodeType
 }
 
-class EmptyNode extends Node("")
+class EmptyNode extends Node

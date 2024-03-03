@@ -2,7 +2,7 @@ package io.joern.gosrc2cpg.ast.nodes
 
 import scala.collection.mutable.ListBuffer
 
-class Field extends Node("Field") {
+class Field extends Node  {
   var documentation: Option[CommentGroup] = None
   var names: ListBuffer[Identifier] = new ListBuffer()
   var typeExpression: Option[Expression] = None
@@ -10,7 +10,7 @@ class Field extends Node("Field") {
   var comment: Option[CommentGroup] = None
 }
 
-class FieldList extends Node("FieldList") {
+class FieldList extends Node {
   var opening: Int = 0
   var fields: ListBuffer[Field] = new ListBuffer()
   var closing: Int = 0

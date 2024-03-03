@@ -34,7 +34,7 @@ import scala.collection.mutable.ListBuffer
     new JsonSubTypes.Type(value = classOf[MapType], name = "MapType"),
     new JsonSubTypes.Type(value = classOf[StructType], name = "StructType")
 ))
-abstract class Expression extends Node("Expression")
+abstract class Expression extends Node
 
 class Identifier extends Expression {
     var namePosition: Int = 0
