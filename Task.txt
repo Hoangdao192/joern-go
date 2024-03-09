@@ -1,12 +1,1 @@
-Xây dựng phương pháp đánh giá giữa hai công cụ (tự phát triển và có sẵn)
-- Phân tích các project go nhiều sao trên github và đánh giá về độ chi tiết dữ liệu
-
-
-Báo cáo tiến độ
-* Tình hình hiện tại:
- - Xử lý thêm được các loại node: variable, import, literal, identifier, if block, for block, array, slice, call expression (gọi hàm), composite literal (các cú pháp về khởi tạo struct, array, slice) và một số node đơn giản khác
- - Vẫn chưa đánh giá được giữa hai công cụ tự phát triển và có sẵn
- 
-* Hướng đi tiếp theo
-- Lựa chọn phương pháp đánh giá công cụ tự phát triển với cái có sẵn
-- Xử lý kiểu dữ liệu và signature của node, tiếp tục hoàn thiện các node còn thiếu
+hjkj

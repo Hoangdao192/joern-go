@@ -24,6 +24,7 @@ class AstCreator(rootNode: FileNode, filename: String, goModule: GoModule)(impli
     protected val logger: Logger = LoggerFactory.getLogger(classOf[AstCreator])
     protected val objectMapper: ObjectMapper = ObjectMapper()
     protected val namespaceStack: util.Stack[NewNode] = new util.Stack()
+    protected val namespaceMap: util.Map[String, NewNode] = new util.HashMap()
 
     def createAst(): DiffGraphBuilder = {
         val ast = astForTranslationUnit(rootNode)
@@ -68,20 +69,24 @@ class AstCreator(rootNode: FileNode, filename: String, goModule: GoModule)(impli
 
     private def astForPackageNode(filename: String,
                                   packageIdentifier: Option[Identifier]): Ast = {
-        val namespaceBlock = packageIdentifier match {
+        val (name, fullname) = packageIdentifier match {
             case Some(packageDecl) =>
-                val packageFullname = getPackageFullname(goModule, filename, packageDecl)
-                NewNamespaceBlock()
-                    .name(packageDecl.name.get)
-                    .fullName(packageFullname)
-                    .filename(filename)
+                (packageDecl.name.get, getPackageFullname(goModule, filename, packageDecl))
             case None =>
-                NewNamespaceBlock()
-                    .name("\\")
-                    .fullName(goModule.moduleName)
-                    .filename(filename)
+                ("\\", goModule.moduleName)
         }
-
+        
+        var namespaceBlock = if (namespaceMap.containsKey(fullname)) {
+            namespaceMap.get(fullname)
+        } else {
+            NewNamespaceBlock()
+                .name(name)
+                .fullName(fullname)
+                .filename(filename)
+        }
+        namespaceMap.put(
+            fullname, namespaceBlock
+        )
         Ast(namespaceBlock)
     }
 

@@ -5,9 +5,10 @@ import io.joern.gosrc2cpg.ast.GoModule
 import io.joern.gosrc2cpg.ast.nodes.FileNode
 import io.joern.gosrc2cpg.astcreation.AstCreator
 import io.joern.gosrc2cpg.parser.JsonParser
-import io.joern.x2cpg.SourceFiles
+import io.joern.x2cpg.{Ast, SourceFiles}
 import io.joern.x2cpg.utils.{ExternalCommand, Report, TimeUtils}
 import io.shiftleft.codepropertygraph.Cpg
+import io.shiftleft.codepropertygraph.generated.nodes.NewFile
 import io.shiftleft.passes.ConcurrentWriterCpgPass
 import io.shiftleft.utils.IOUtils
 
@@ -18,61 +19,66 @@ import scala.collection.mutable.ListBuffer
 import scala.reflect.{ClassTag, classTag}
 import scala.util.matching.Regex;
 
-class AstCreationPass(cpg:Cpg, config:Config, workingDir: String, goModule: GoModule, report:Report = new Report())
-        extends ConcurrentWriterCpgPass[String](cpg) {
+class AstCreationPass(cpg: Cpg, config: Config, workingDir: String, goModule: GoModule, report: Report = new Report())
+    extends ConcurrentWriterCpgPass[String](cpg) {
 
-  private val sourceFileExtension: Set[String] = Set(".go")
-  private val DefaultIgnoredFolders: List[Regex] = List()
-  private val jsonParser: JsonParser = new JsonParser()
+    private val sourceFileExtension: Set[String] = Set(".go")
+    private val DefaultIgnoredFolders: List[Regex] = List()
+    private val jsonParser: JsonParser = new JsonParser()
 
-  override def generateParts(): Array[String] = {
-    val binary = "/home/hoangdao/Workspace/Scala/Joern/joern-cli/frontends/gosrc2cpg/bin/go-parser/goparser"
-    val command: String = s"$binary ${config.inputPath} $workingDir"
-    ExternalCommand.run(command, ".")
-//    val arr = SourceFiles.determine(
-//      workingDir,
-//      Set("go.json"),
-//      Option(DefaultIgnoredFolders),
-//      Option(config.ignoredFilesRegex),
-//      Option(config.ignoredFiles)
-//    ).toArray(classTag[String])
+    override def generateParts(): Array[String] = {
 
-    val rootFile = new File(workingDir)
-    val traverse: ListBuffer[File] = ListBuffer(rootFile)
-    val collect: ListBuffer[File] = ListBuffer()
-    while (traverse.nonEmpty) {
-      val current = traverse.head
-      if (current.isDirectory) {
-        traverse.addAll(current.listFiles())
-      } else if (current.isFile && current.getName.endsWith(".json")) {
-        collect.addOne(current)
-      }
-      traverse.remove(0)
+        val binary = "/home/hoangdao/Workspace/Scala/Joern/joern-cli/frontends/gosrc2cpg/bin/go-parser/goparser"
+        val command: String = s"$binary ${config.inputPath} $workingDir"
+        ExternalCommand.run(command, ".")
+
+        val rootFile = new File(workingDir)
+        val traverse: ListBuffer[File] = ListBuffer(rootFile)
+        val collect: ListBuffer[File] = ListBuffer()
+        while (traverse.nonEmpty) {
+          val current = traverse.head
+          if (current.isDirectory) {
+            traverse.addAll(current.listFiles())
+          } else if (current.isFile && current.getName.endsWith(".json")) {
+            collect.addOne(current)
+          }
+          traverse.remove(0)
+        }
+
+//        Seq(workingDir).toArray
+            val arr = collect.map(file => file.getAbsolutePath).toArray(classTag[String])
+            arr
     }
 
-    val arr = collect.map(file => file.getAbsolutePath).toArray(classTag[String])
-    arr
-//    SourceFiles
-//      .determine(
-//        config.inputPath,
-//        sourceFileExtension,
-//        Option(DefaultIgnoredFolders),
-//        Option(config.ignoredFilesRegex),
-//        Option(config.ignoredFiles)
-//      ).toArray
-  }
+    override def runOnPart(builder: DiffGraphBuilder, fileName: String): Unit = {
+        val path = Paths.get(fileName).toAbsolutePath;
+        var relPath = SourceFiles.toRelativePath(path.toString, config.inputPath)
+        //    val fileLOC = IOUtils.readLinesInFile(path).size
+        val (gotCpg, duration) = TimeUtils.time {
 
-  override def runOnPart(builder: DiffGraphBuilder, fileName: String): Unit = {
-    val path = Paths.get(fileName).toAbsolutePath;
-    var relPath = SourceFiles.toRelativePath(path.toString, config.inputPath)
-    val fileLOC = IOUtils.readLinesInFile(path).size
-    val (gotCpg, duration) = TimeUtils.time {
-      val parsedFile: FileNode = jsonParser.parse(fileName)
-      val localDiff = new AstCreator(
-        parsedFile, fileName, goModule
-      )(config.schemaValidation).createAst()
-      builder.absorb(localDiff)
+//            val rootFile = new File(fileName)
+//            val traverse: ListBuffer[File] = ListBuffer(rootFile)
+//            val collect: ListBuffer[File] = ListBuffer()
+//            while (traverse.nonEmpty) {
+//                val current = traverse.head
+//                if (current.isDirectory) {
+//                    traverse.addAll(current.listFiles())
+//                } else if (current.isFile && current.getName.endsWith(".json")) {
+//                    collect.addOne(current)
+//                }
+//                traverse.remove(0)
+//            }
+
+            val parsedFile: FileNode = jsonParser.parse(fileName)
+            val localDiff = new AstCreator(
+                parsedFile, fileName, goModule
+            )(config.schemaValidation).createAst()
+            builder.absorb(localDiff)
+        }
     }
-  }
+
+//    private def walkProjectTreeAndCreateAst(root: String): Ast = {
+//        Ast().
+//    }
 
 }
