@@ -1,5 +1,7 @@
 package io.joern.gosrc2cpg.ast.nodes
 
+import com.fasterxml.jackson.annotation.JsonProperty
+
 import scala.collection.mutable.ListBuffer
 
 class Field extends Node  {
@@ -12,6 +14,7 @@ class Field extends Node  {
 
 class FieldList extends Node {
   var opening: Int = 0
+  @JsonProperty("list")
   var fields: ListBuffer[Field] = new ListBuffer()
   var closing: Int = 0
 }

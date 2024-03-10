@@ -1,7 +1,7 @@
 package io.joern.gosrc2cpg.astcreation
 
 import io.joern.gosrc2cpg.ast.nodes.*
-import io.joern.x2cpg.{Ast, AstCreatorBase, AstNodeBuilder, ValidationMode}
+import io.joern.x2cpg.{Ast, AstCreatorBase, AstNodeBuilder, Defines, ValidationMode}
 import io.shiftleft.codepropertygraph.generated.nodes.{NewNamespaceBlock, NewNode}
 import org.slf4j.{Logger, LoggerFactory}
 import overflowdb.BatchedUpdate.DiffGraphBuilder
@@ -37,28 +37,29 @@ class AstCreator(rootNode: FileNode, filename: String, goModule: GoModule)(impli
     }
 
     private def astForTranslationUnit(root: FileNode): Ast = {
-        val namespaceAst = root.name match {
-            case Some(packageIdent) => astForPackageNode (root.filePath, root.name)
-            case None => Ast(NewNamespaceBlock().name("\\").fullName(goModule.moduleName).filename(root.filePath))
+        val (fullname, namespaceAst) = root.name match {
+            case Some(packageIdent) => astForPackageNode(root.filePath, root.name)
+            case None =>
+                (goModule.moduleName, Ast(NewNamespaceBlock().name("\\").fullName(goModule.moduleName).filename(root.filePath)))
         }
 
         namespaceStack.push(namespaceAst.nodes.head)
         
         val childrenAst = ListBuffer[Ast]()
         for (decl <- root.declarations) {
-            childrenAst.addAll(astForGoAstNode(decl))
+            childrenAst.addAll(astForGoAstNode(decl, fullname))
         }
         
         namespaceStack.pop()
         namespaceAst.withChildren(childrenAst)
     }
 
-    private def astForGoAstNode(node: Node): Seq[Ast] = {
+    private def astForGoAstNode(node: Node, parentFullname: String): Seq[Ast] = {
         val asts: Seq[Ast] = node match {
-            case declaration: Declaration => astForDeclaration(filename, declaration)
+            case declaration: Declaration => astForDeclaration(filename, parentFullname, declaration)
             case statement: Statement => Seq(astForStatement(filename, statement))
             case expression: Expression => Seq(astForExpression(filename, expression))
-            case specification: Specification => astForSpecification(filename, specification)
+            case specification: Specification => astForSpecification(filename,parentFullname, specification)
             case unknown => {
                 logger.warn(s"Unknown node type")
                 Seq()
@@ -68,7 +69,7 @@ class AstCreator(rootNode: FileNode, filename: String, goModule: GoModule)(impli
     }
 
     private def astForPackageNode(filename: String,
-                                  packageIdentifier: Option[Identifier]): Ast = {
+                                  packageIdentifier: Option[Identifier]): (String, Ast) = {
         val (name, fullname) = packageIdentifier match {
             case Some(packageDecl) =>
                 (packageDecl.name.get, getPackageFullname(goModule, filename, packageDecl))
@@ -87,9 +88,34 @@ class AstCreator(rootNode: FileNode, filename: String, goModule: GoModule)(impli
         namespaceMap.put(
             fullname, namespaceBlock
         )
-        Ast(namespaceBlock)
+        (fullname, Ast(namespaceBlock))
     }
 
+    def astForFieldListNode(filename: String, fieldList: FieldList): Seq[Ast] = {
+        val fieldAsts = ListBuffer[Ast]()
+        fieldList.fields.foreach(field => fieldAsts.addAll(astForFieldNode(
+            filename, field
+        )))
+        fieldAsts.toArray
+    }
+    
+    def astForFieldNode(filename: String, field: Field): Seq[Ast] = {
+        field.names.map(identifier => {
+            val name = identifier.name match {
+                case Some(identifierName) => identifierName
+                case None => Defines.Unknown
+            }
+            val typeName = field.typeExpression match {
+                case Some(typeExpression) => getTypeFullNameFromExpression(typeExpression)
+                case None => Defines.Unknown
+            }
+            val member = memberNode(
+                field, name, field.code, typeName
+            )
+            Ast(member)
+        }).toSeq
+    }
+    
     //  TODO: Need implements correctly
     protected override def code(node: io.joern.gosrc2cpg.ast.nodes.Node): String = "Ignore"
 

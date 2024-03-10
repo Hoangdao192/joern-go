@@ -150,5 +150,29 @@ trait AstCreatorHelper(implicit withSchemaValidation: ValidationMode) {
             
         }
     }
+    
+    def getTypeFullNameFromExpression(expression: Expression): String = {
+        expression match {
+            case identifier: Identifier => identifier.name match {
+                case Some(name) => name
+                case None => Defines.Unknown
+            }
+            case arrayType: ArrayType => 
+                val fullname = arrayType.element match {
+                    case Some(elementIdentifier) => getTypeFullNameFromExpression(elementIdentifier)
+                    case None => Defines.Unknown
+                }
+                s"[]$fullname"
+            case starExpression: StarExpression =>
+                val fullname = starExpression.expression match {
+                    case Some(innerExpression) => getTypeFullNameFromExpression(innerExpression)
+                    case None => Defines.Unknown
+                }
+                s"*$fullname"
+            case _ => 
+                logger.warn(s"Unhandled type expression ${expression.getClass.toString}")
+                Defines.Unknown
+        }
+    }
 
 }

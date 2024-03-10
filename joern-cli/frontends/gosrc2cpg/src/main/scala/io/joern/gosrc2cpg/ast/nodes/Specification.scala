@@ -1,6 +1,6 @@
 package io.joern.gosrc2cpg.ast.nodes
 
-import com.fasterxml.jackson.annotation.{JsonSubTypes, JsonTypeInfo}
+import com.fasterxml.jackson.annotation.{JsonProperty, JsonSubTypes, JsonTypeInfo}
 
 import scala.collection.mutable.ListBuffer
 
@@ -28,6 +28,7 @@ class TypeSpecification extends Specification {
   var name: Option[Identifier] = None
   var typeParams: Option[FieldList] = None
   var assign: Int = 0
+  @JsonProperty("type")
   var typeExpression: Option[Expression] = None
   var comment: Option[CommentGroup] = None
 }

@@ -5,7 +5,8 @@ import com.fasterxml.jackson.annotation.{JsonSubTypes, JsonTypeInfo}
 @JsonTypeInfo(
   use = JsonTypeInfo.Id.NAME,
   include = JsonTypeInfo.As.PROPERTY,
-  property = "nodeType"
+  property = "nodeType",
+  visible = true
 )
 @JsonSubTypes(Array(
   new JsonSubTypes.Type(value = classOf[FunctionType], name = "FunctionType"),

@@ -103,10 +103,10 @@ abstract class X2CpgMain[T <: X2CpgConfig[T], X <: X2CpgFrontend[_]](val cmdLine
   def run(config: T, frontend: X): Unit
 
   def main(args: Array[String]): Unit = {
-//    var testArgs = Seq(
-//      "/home/hoangdao/Workspace/Go/Test/"
-//    ).toArray
-    X2Cpg.parseCommandLine(args, cmdLineParser, defaultConfig) match {
+    var testArgs = Seq(
+      "/home/hoangdao/Workspace/Go/Test/"
+    ).toArray
+    X2Cpg.parseCommandLine(testArgs, cmdLineParser, defaultConfig) match {
       case Some(config) =>
         try {
           run(config, frontend)

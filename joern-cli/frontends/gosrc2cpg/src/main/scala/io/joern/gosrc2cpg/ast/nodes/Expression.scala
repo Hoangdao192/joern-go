@@ -27,12 +27,12 @@ import scala.collection.mutable.ListBuffer
     new JsonSubTypes.Type(value = classOf[FunctionLiteral], name = "FunctionLiteral"),
     new JsonSubTypes.Type(value = classOf[CompositeLiteral], name = "CompositeLiteral"),
 
-    new JsonSubTypes.Type(value = classOf[FunctionType], name = "FunctionType"),
-    new JsonSubTypes.Type(value = classOf[ArrayType], name = "ArrayType"),
-    new JsonSubTypes.Type(value = classOf[ChanelType], name = "ChanelType"),
-    new JsonSubTypes.Type(value = classOf[InterfaceType], name = "InterfaceType"),
-    new JsonSubTypes.Type(value = classOf[MapType], name = "MapType"),
-    new JsonSubTypes.Type(value = classOf[StructType], name = "StructType")
+    new JsonSubTypes.Type(value = classOf[Type], name = "FunctionType"),
+    new JsonSubTypes.Type(value = classOf[Type], name = "ArrayType"),
+    new JsonSubTypes.Type(value = classOf[Type], name = "ChanelType"),
+    new JsonSubTypes.Type(value = classOf[Type], name = "InterfaceType"),
+    new JsonSubTypes.Type(value = classOf[Type], name = "MapType"),
+    new JsonSubTypes.Type(value = classOf[Type], name = "StructType")
 ))
 abstract class Expression extends Node
 

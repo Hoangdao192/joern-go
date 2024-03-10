@@ -9,7 +9,7 @@ import io.shiftleft.semanticcpg.language.types.structure.NamespaceTraversal
 import io.shiftleft.semanticcpg.language.*
 import io.joern.x2cpg.passes.frontend.MetaDataPass
 import io.joern.x2cpg.{Ast, ValidationMode}
-import io.joern.x2cpg.utils.NodeBuilders.newMethodReturnNodeg
+import io.joern.x2cpg.utils.NodeBuilders.newMethodReturnNode
 
 class TypeDeclNodePass(cpg: Cpg)(implicit withSchemaValidation: ValidationMode) extends CpgPass(cpg) {
 

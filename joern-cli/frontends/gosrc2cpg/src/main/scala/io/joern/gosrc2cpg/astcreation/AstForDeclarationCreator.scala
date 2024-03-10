@@ -10,13 +10,13 @@ import scala.collection.mutable.ListBuffer
 
 trait AstForDeclarationCreator(implicit schemaValidationMode: ValidationMode) { this: AstCreator =>
 
-    def astForDeclaration(fileName: String, declaration: Declaration): Seq[Ast] = {
+    def astForDeclaration(fileName: String, parentFullname: String, declaration: Declaration): Seq[Ast] = {
         declaration match {
             case functionDeclaration: FunctionDeclaration => Seq(
                 astForFunctionDeclaration(fileName, functionDeclaration)
             )
             case genericDeclaration: GenericDeclaration => astForGenericDeclaration(
-                fileName, genericDeclaration
+                fileName, parentFullname, genericDeclaration
             )
             case _ => {
                 logger.warn(s"Unhandled declaration")
@@ -66,10 +66,10 @@ trait AstForDeclarationCreator(implicit schemaValidationMode: ValidationMode) { 
         }
     }
     
-    private def astForGenericDeclaration(fileName: String, genericDeclaration: GenericDeclaration): Seq[Ast] = {
+    private def astForGenericDeclaration(fileName: String, parentFullname: String, genericDeclaration: GenericDeclaration): Seq[Ast] = {
         val asts = ListBuffer[Ast]()
         genericDeclaration.specifications.map(specification => astForSpecification(
-            fileName, specification
+            fileName, parentFullname, specification
         )).foreach(seq => asts.addAll(seq))
         asts.toList
     }
