@@ -2,7 +2,7 @@ package io.joern.gosrc2cpg.astcreation
 
 import io.joern.gosrc2cpg.ast.nodes.*
 import io.joern.x2cpg.{Ast, AstCreatorBase, AstNodeBuilder, Defines, ValidationMode}
-import io.shiftleft.codepropertygraph.generated.nodes.{NewNamespaceBlock, NewNode}
+import io.shiftleft.codepropertygraph.generated.nodes.{NewNamespaceBlock, NewNode, NewType}
 import org.slf4j.{Logger, LoggerFactory}
 import overflowdb.BatchedUpdate.DiffGraphBuilder
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -12,7 +12,7 @@ import java.util
 import scala.collection.mutable.ListBuffer
 import scala.language.postfixOps
 
-class AstCreator(rootNode: FileNode, filename: String, goModule: GoModule)(implicit val validationMode: ValidationMode)
+class AstCreator(rootNode: FileNode, filename: String, goModule: GoModule, protected var usedPrimitiveTypes: util.Set[String])(implicit val validationMode: ValidationMode)
     extends AstCreatorBase(filename)
         with AstCreatorHelper
         with AstForExpressionCreator
@@ -25,6 +25,7 @@ class AstCreator(rootNode: FileNode, filename: String, goModule: GoModule)(impli
     protected val objectMapper: ObjectMapper = ObjectMapper()
     protected val namespaceStack: util.Stack[NewNode] = new util.Stack()
     protected val namespaceMap: util.Map[String, NewNode] = new util.HashMap()
+    protected val typeSet: util.Set[String] = new util.HashSet[String]()
 
     def createAst(): DiffGraphBuilder = {
         val ast = astForTranslationUnit(rootNode)
@@ -34,6 +35,21 @@ class AstCreator(rootNode: FileNode, filename: String, goModule: GoModule)(impli
 //        }
         Ast.storeInDiffGraph(ast, diffGraph)
         diffGraph
+    }
+
+    private def generatePrimitiveType(): Seq[Ast] = {
+        val typeAsts = new ListBuffer[Ast]()
+        usedPrimitiveTypes.forEach(primitiveType => {
+            val ast = Ast(typeDeclNode(
+                new PrimitiveType(Option(primitiveType)),
+                primitiveType,
+                primitiveType,
+                Defines.Unknown,
+                primitiveType
+            ))
+            typeAsts.addOne(ast)
+        })
+        typeAsts.toSeq
     }
 
     private def astForTranslationUnit(root: FileNode): Ast = {

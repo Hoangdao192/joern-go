@@ -19,6 +19,7 @@ import java.util.concurrent.TimeUnit
 import scala.collection.mutable.ListBuffer
 import scala.reflect.{ClassTag, classTag}
 import scala.util.matching.Regex;
+import java.util
 
 class AstCreationPass(cpg: Cpg, config: Config, workingDir: String, goModule: GoModule, report: Report = new Report())
     extends ConcurrentWriterCpgPass[Array[String]](cpg) {
@@ -26,6 +27,7 @@ class AstCreationPass(cpg: Cpg, config: Config, workingDir: String, goModule: Go
     private val sourceFileExtension: Set[String] = Set(".go")
     private val DefaultIgnoredFolders: List[Regex] = List()
     private val jsonParser: JsonParser = new JsonParser()
+    private val usedTypes: util.Set[String] = new util.HashSet[String]()
     private val logger: Logger = LoggerFactory.getLogger(classOf[AstCreator])
 
     override def generateParts(): Array[Array[String]] = {
@@ -75,7 +77,7 @@ class AstCreationPass(cpg: Cpg, config: Config, workingDir: String, goModule: Go
 
                 val parsedFile: FileNode = jsonParser.parse(fileName)
                 val localDiff = new AstCreator(
-                    parsedFile, fileName, goModule
+                    parsedFile, fileName, goModule, usedTypes
                 )(config.schemaValidation).createAst()
                 builder.absorb(localDiff)
             }
@@ -83,6 +85,8 @@ class AstCreationPass(cpg: Cpg, config: Config, workingDir: String, goModule: Go
 
     }
 
+    def getUsedPrimitiveType() = usedTypes
+    
 //    private def walkProjectTreeAndCreateAst(root: String): Ast = {
 //        Ast().
 //    }

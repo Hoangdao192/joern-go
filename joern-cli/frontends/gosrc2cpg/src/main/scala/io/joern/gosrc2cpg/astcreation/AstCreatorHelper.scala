@@ -3,6 +3,7 @@ package io.joern.gosrc2cpg.astcreation
 import io.joern.gosrc2cpg.ast.GoModule
 import io.joern.gosrc2cpg.ast.nodes.*
 import io.joern.x2cpg.{Ast, Defines, ValidationMode}
+import io.joern.gosrc2cpg.Constant
 import io.shiftleft.codepropertygraph.generated.EvaluationStrategies
 import io.shiftleft.codepropertygraph.generated.nodes.{NewMethodParameterIn, NewMethodReturn, NewNode, NewUnknown}
 
@@ -150,29 +151,37 @@ trait AstCreatorHelper(implicit withSchemaValidation: ValidationMode) {
             
         }
     }
-    
-    def getTypeFullNameFromExpression(expression: Expression): String = {
+
+    private def resolveType(expression: Expression): (String, Boolean) = {
         expression match {
             case identifier: Identifier => identifier.name match {
-                case Some(name) => name
-                case None => Defines.Unknown
+                case Some(name) => (name, Constant.PRIMITIVE_TYPES.contains(name))
+                case None => (Defines.Unknown, false)
             }
-            case arrayType: ArrayType => 
-                val fullname = arrayType.element match {
-                    case Some(elementIdentifier) => getTypeFullNameFromExpression(elementIdentifier)
-                    case None => Defines.Unknown
+            case arrayType: ArrayType =>
+                val (fullname, primitive) = arrayType.element match {
+                    case Some(elementIdentifier) => resolveType(elementIdentifier)
+                    case None => (Defines.Unknown, false)
                 }
-                s"[]$fullname"
+                (s"[]$fullname", primitive)
             case starExpression: StarExpression =>
-                val fullname = starExpression.expression match {
-                    case Some(innerExpression) => getTypeFullNameFromExpression(innerExpression)
-                    case None => Defines.Unknown
+                val (fullname, primitive) = starExpression.expression match {
+                    case Some(innerExpression) => resolveType(innerExpression)
+                    case None => (Defines.Unknown, false)
                 }
-                s"*$fullname"
-            case _ => 
+                (s"*$fullname", primitive)
+            case _ =>
                 logger.warn(s"Unhandled type expression ${expression.getClass.toString}")
-                Defines.Unknown
+                (Defines.Unknown, false)
         }
+    }
+
+    def getTypeFullNameFromExpression(expression: Expression): String = {
+        val (typeFullname, isPrimitiveType) = resolveType(expression)
+        if (isPrimitiveType) {
+            usedPrimitiveTypes.add(typeFullname)
+        }
+        typeFullname
     }
 
 }

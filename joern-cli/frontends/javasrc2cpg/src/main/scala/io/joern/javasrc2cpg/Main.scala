@@ -130,10 +130,13 @@ object Main extends X2CpgMain(cmdLineParser, new JavaSrc2Cpg()) {
   override def main(args: Array[String]): Unit = {
     // TODO: This is a hack to allow users to use the "--show-env" option without having
     //  to specify an input argument. Clean this up when adding this option to more frontends.
-    if (args.contains("--show-env")) {
+    var testArgs = Seq(
+            "/home/hoangdao/Workspace/Go/Test/"
+          ).toArray
+    if (testArgs.contains("--show-env")) {
       super.main(Array("--show-env", "<input_dir_placeholder>"))
     } else {
-      super.main(args)
+      super.main(testArgs)
     }
   }
 
