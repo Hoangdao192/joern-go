@@ -8,6 +8,7 @@ import overflowdb.BatchedUpdate.DiffGraphBuilder
 import com.fasterxml.jackson.databind.ObjectMapper
 import io.joern.gosrc2cpg.ast.GoModule
 
+import java.nio.file.Paths
 import java.util
 import scala.collection.mutable.ListBuffer
 import scala.language.postfixOps
@@ -26,6 +27,7 @@ class AstCreator(rootNode: FileNode, filename: String, goModule: GoModule, prote
     protected val namespaceStack: util.Stack[NewNode] = new util.Stack()
     protected val namespaceMap: util.Map[String, NewNode] = new util.HashMap()
     protected val typeSet: util.Set[String] = new util.HashSet[String]()
+    protected var globalAst: Option[Ast] = None
 
     def createAst(): DiffGraphBuilder = {
         val ast = astForTranslationUnit(rootNode)
@@ -34,7 +36,14 @@ class AstCreator(rootNode: FileNode, filename: String, goModule: GoModule, prote
 //            Ast.storeInDiffGraph(ast, diffGraph)
 //        }
         Ast.storeInDiffGraph(ast, diffGraph)
+        globalAst = Option(ast)
         diffGraph
+    }
+
+    def createAstCustom(): (DiffGraphBuilder, Ast) = {
+        val ast = astForTranslationUnit(rootNode)
+        Ast.storeInDiffGraph(ast, diffGraph)
+        (diffGraph, ast)
     }
 
     private def generatePrimitiveType(): Seq[Ast] = {
@@ -62,20 +71,23 @@ class AstCreator(rootNode: FileNode, filename: String, goModule: GoModule, prote
         namespaceStack.push(namespaceAst.nodes.head)
         
         val childrenAst = ListBuffer[Ast]()
+        val parentPath = Paths.get(goModule.modulePath);
+        val childPath = Paths.get(root.filePath)
+        val filePath = parentPath.relativize(childPath).toString
         for (decl <- root.declarations) {
-            childrenAst.addAll(astForGoAstNode(decl, fullname))
+            childrenAst.addAll(astForGoAstNode(decl, fullname, filePath))
         }
         
         namespaceStack.pop()
         namespaceAst.withChildren(childrenAst)
     }
 
-    private def astForGoAstNode(node: Node, parentFullname: String): Seq[Ast] = {
+    private def astForGoAstNode(node: Node, parentFullname: String, filePath: String): Seq[Ast] = {
         val asts: Seq[Ast] = node match {
-            case declaration: Declaration => astForDeclaration(filename, parentFullname, declaration)
-            case statement: Statement => Seq(astForStatement(filename, statement))
-            case expression: Expression => Seq(astForExpression(filename, expression))
-            case specification: Specification => astForSpecification(filename,parentFullname, specification)
+            case declaration: Declaration => astForDeclaration(filePath, parentFullname, declaration)
+            case statement: Statement => Seq(astForStatement(filePath, statement))
+            case expression: Expression => Seq(astForExpression(filePath, expression))
+            case specification: Specification => astForSpecification(filePath,parentFullname, specification)
             case unknown => {
                 logger.warn(s"Unknown node type")
                 Seq()
@@ -96,10 +108,12 @@ class AstCreator(rootNode: FileNode, filename: String, goModule: GoModule, prote
         var namespaceBlock = if (namespaceMap.containsKey(fullname)) {
             namespaceMap.get(fullname)
         } else {
+            val parentPath = Paths.get(goModule.modulePath);
+            val childPath = Paths.get(filename)
             NewNamespaceBlock()
                 .name(name)
                 .fullName(fullname)
-                .filename(filename)
+                .filename(parentPath.relativize(childPath).toString)
         }
         namespaceMap.put(
             fullname, namespaceBlock

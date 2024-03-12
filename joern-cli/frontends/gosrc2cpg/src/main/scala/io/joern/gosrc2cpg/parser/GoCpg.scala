@@ -3,7 +3,7 @@ package io.joern.gosrc2cpg.parser
 import io.joern.gosrc2cpg.Config
 import io.joern.gosrc2cpg.Frontend.defaultConfig
 import io.joern.gosrc2cpg.ast.GoModule
-import io.joern.gosrc2cpg.passes.{AstCreationPass, TypeResolverPass}
+import io.joern.gosrc2cpg.passes.{AstCreationPass, ModuleResolverPass, TypeResolverPass}
 import io.joern.x2cpg.passes.frontend.MetaDataPass
 import io.joern.x2cpg.utils.Report
 import io.joern.x2cpg.{X2Cpg, X2CpgFrontend}
@@ -31,6 +31,7 @@ class GoCpg extends X2CpgFrontend[Config] {
                 astCreationPass.createAndApply()
                 val typeResolverPass = new TypeResolverPass(cpg, astCreationPass.getUsedPrimitiveType().toArray(Array.empty[String]))
                 typeResolverPass.createAndApply()
+                new ModuleResolverPass(cpg, goModule).createAndApply()
             }
         }
     }

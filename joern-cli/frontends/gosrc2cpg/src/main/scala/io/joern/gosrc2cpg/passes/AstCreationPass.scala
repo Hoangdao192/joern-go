@@ -8,7 +8,7 @@ import io.joern.gosrc2cpg.parser.JsonParser
 import io.joern.x2cpg.{Ast, SourceFiles}
 import io.joern.x2cpg.utils.{ExternalCommand, Report, TimeUtils}
 import io.shiftleft.codepropertygraph.Cpg
-import io.shiftleft.codepropertygraph.generated.nodes.NewFile
+import io.shiftleft.codepropertygraph.generated.nodes.{NewFile, NewNamespaceBlock}
 import io.shiftleft.passes.ConcurrentWriterCpgPass
 import io.shiftleft.utils.IOUtils
 import org.slf4j.{Logger, LoggerFactory}
@@ -18,7 +18,7 @@ import java.nio.file.Paths
 import java.util.concurrent.TimeUnit
 import scala.collection.mutable.ListBuffer
 import scala.reflect.{ClassTag, classTag}
-import scala.util.matching.Regex;
+import scala.util.matching.Regex
 import java.util
 
 class AstCreationPass(cpg: Cpg, config: Config, workingDir: String, goModule: GoModule, report: Report = new Report())
@@ -82,7 +82,6 @@ class AstCreationPass(cpg: Cpg, config: Config, workingDir: String, goModule: Go
                 builder.absorb(localDiff)
             }
         })
-
     }
 
     def getUsedPrimitiveType() = usedTypes

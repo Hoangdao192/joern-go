@@ -3,6 +3,8 @@ package io.joern.gosrc2cpg.astcreation
 import io.joern.x2cpg.ValidationMode
 import io.joern.x2cpg.Ast
 import io.joern.gosrc2cpg.ast.nodes.*
+import io.joern.x2cpg.utils.NodeBuilders.newModifierNode
+import io.shiftleft.codepropertygraph.generated.ModifierTypes
 
 import scala.collection.mutable.ListBuffer
 
@@ -97,10 +99,23 @@ trait AstForSpecificationCreator(implicit schemaValidationMode: ValidationMode) 
             case Some(fields) => astForFieldListNode(filename, fields)
             case None => Seq.empty
         }
+        fieldAsts.foreach(fieldAst => {
+            val fieldModifier = if (name.headOption.exists(_.isUpper)) {
+                Ast(newModifierNode(ModifierTypes.PUBLIC))
+            } else {
+                Ast(newModifierNode(ModifierTypes.PRIVATE))
+            }
+            fieldAst.withChild(fieldModifier)
+        })
         val typeDecl = typeDeclNode(typeSpecification, name, s"$parentFullName.$name",
             filename, typeSpecification.code
         )
-        Ast(typeDecl).withChildren(fieldAsts)
+        val modifierAst = if (name.headOption.exists(_.isUpper)) {
+            Ast(newModifierNode(ModifierTypes.PUBLIC))
+        } else {
+            Ast(newModifierNode(ModifierTypes.PRIVATE))
+        }
+        Ast(typeDecl).withChild(modifierAst).withChildren(fieldAsts)
     }
     
 }
