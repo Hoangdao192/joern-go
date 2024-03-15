@@ -99,14 +99,7 @@ trait AstForSpecificationCreator(implicit schemaValidationMode: ValidationMode) 
             case Some(fields) => astForFieldListNode(filename, fields)
             case None => Seq.empty
         }
-        fieldAsts.foreach(fieldAst => {
-            val fieldModifier = if (name.headOption.exists(_.isUpper)) {
-                Ast(newModifierNode(ModifierTypes.PUBLIC))
-            } else {
-                Ast(newModifierNode(ModifierTypes.PRIVATE))
-            }
-            fieldAst.withChild(fieldModifier)
-        })
+
         val typeDecl = typeDeclNode(typeSpecification, name, s"$parentFullName.$name",
             filename, typeSpecification.code
         )
@@ -115,7 +108,16 @@ trait AstForSpecificationCreator(implicit schemaValidationMode: ValidationMode) 
         } else {
             Ast(newModifierNode(ModifierTypes.PRIVATE))
         }
-        Ast(typeDecl).withChild(modifierAst).withChildren(fieldAsts)
+        Ast(typeDecl).withChild(modifierAst).withChildren(
+            fieldAsts.map(fieldAst => {
+                val fieldModifier = if (name.headOption.exists(_.isUpper)) {
+                    Ast(newModifierNode(ModifierTypes.PUBLIC))
+                } else {
+                    Ast(newModifierNode(ModifierTypes.PRIVATE))
+                }
+                fieldAst.withChild(fieldModifier)
+            })
+        )
     }
     
 }
