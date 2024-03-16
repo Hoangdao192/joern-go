@@ -6,21 +6,23 @@ import io.joern.gosrc2cpg.ast.nodes.*
 import io.shiftleft.codepropertygraph.generated.ControlStructureTypes
 import io.shiftleft.codepropertygraph.generated.nodes.{NewBlock, NewControlStructure}
 
+import scala.collection.mutable.ListBuffer
+
 trait AstForStatementCreator(implicit withSchemaValidation: ValidationMode) {
     this: AstCreator =>
 
-    def astForStatement(fileName: String, statement: Statement): Ast = {
-        val ast: Ast = statement match {
-            case ifStatement: IfStatement => astForIfStatement(fileName: String, ifStatement: IfStatement)
-            case switchStatement: SwitchStatement => astForSwitchStatement(fileName, switchStatement)
-            case typeSwitchStatement: TypeSwitchStatement => astForTypeSwitchStatement(fileName, typeSwitchStatement)
-            case forStatement: ForStatement => astForForStatement(fileName, forStatement)
-            case rangeStatement: RangeStatement => astForRangeStatement(fileName, rangeStatement)
-            case blockStatement: BlockStatement => astForBlockStatement(fileName, blockStatement)
-            case branchStatement: BranchStatement => astForBranchStatement(fileName, branchStatement)
-            case _ => Ast()
+    def astForStatement(fileName: String, statement: Statement): Seq[Ast] = {
+        statement match {
+            case declarationStatement: DeclarationStatement => astForDeclarationStatement(fileName, declarationStatement)
+            case ifStatement: IfStatement => Seq(astForIfStatement(fileName, ifStatement))
+            case switchStatement: SwitchStatement => Seq(astForSwitchStatement(fileName, switchStatement))
+            case typeSwitchStatement: TypeSwitchStatement => Seq(astForTypeSwitchStatement(fileName, typeSwitchStatement))
+            case forStatement: ForStatement => Seq(astForForStatement(fileName, forStatement))
+            case rangeStatement: RangeStatement => Seq(astForRangeStatement(fileName, rangeStatement))
+            case blockStatement: BlockStatement => Seq(astForBlockStatement(fileName, blockStatement))
+            case branchStatement: BranchStatement => Seq(astForBranchStatement(fileName, branchStatement))
+            case _ => Seq()
         }
-        ast
     }
 
     private def astForIfStatement(fileName: String, ifStatement: IfStatement): Ast = {
@@ -33,7 +35,7 @@ trait AstForStatementCreator(implicit withSchemaValidation: ValidationMode) {
         val elseAst = astForStatement(fileName, ifStatement.elseStatement.get)
 
         Ast(ifNode)
-            .withChildren(Seq(conditionAst, bodyAst, elseAst))
+            .withChildren(Seq(conditionAst, bodyAst, elseAst.head))
             .withConditionEdge(ifNode, conditionAst.root.get)
     }
 
@@ -46,7 +48,7 @@ trait AstForStatementCreator(implicit withSchemaValidation: ValidationMode) {
 
         val switchBodyAst = astForStatement(fileName, switchStatement.body.get)
         Ast(switchNode)
-            .withChildren(Seq(conditionAst, switchBodyAst))
+            .withChildren(Seq(conditionAst, switchBodyAst.head))
             .withConditionEdge(switchNode, conditionAst.root.get)
     }
 
@@ -60,8 +62,8 @@ trait AstForStatementCreator(implicit withSchemaValidation: ValidationMode) {
         val switchBodyAst = astForStatement(fileName, typeSwitchStatement.body.get)
 
         Ast(switchNode)
-            .withChildren(Seq(switchBodyAst))
-            .withConditionEdge(switchNode, assignAst.root.get)
+            .withChildren(Seq(switchBodyAst.head))
+            .withConditionEdge(switchNode, assignAst.head.root.get)
     }
 
     private def astForForStatement(fileName: String, forStatement: ForStatement): Ast = {
@@ -74,7 +76,7 @@ trait AstForStatementCreator(implicit withSchemaValidation: ValidationMode) {
         val forNode = NewControlStructure()
             .controlStructureType(ControlStructureTypes.FOR)
             .code("")
-        forAst(forNode, Seq(), Seq(initAst), Seq(conditionAst), Seq(updateAst), bodyAst)
+        forAst(forNode, Seq(), initAst, Seq(conditionAst), updateAst, bodyAst.head)
     }
 
     private def astForRangeStatement(fileName: String, rangeStatement: RangeStatement): Ast = {
@@ -87,12 +89,13 @@ trait AstForStatementCreator(implicit withSchemaValidation: ValidationMode) {
             .typeFullName("unit")
             .lineNumber(line(blockStatement))
             .columnNumber(column(blockStatement ))
-        val childrenAst = blockStatement.statements.map(statement => astForStatement(fileName, statement))
+        val childrenAst = ListBuffer[Ast]()
+        blockStatement.statements.foreach(statement => childrenAst.addAll(astForStatement(fileName, statement)))
         blockAst(blockNode, childrenAst.toList)
     }
 
     private def astForBranchStatement(fileName: String, branchStatement: BranchStatement): Ast = {
-        var controlStructureType = branchStatement.token match {
+        val controlStructureType = branchStatement.token match {
             case Token.Break => ControlStructureTypes.BREAK
             case Token.Continue => ControlStructureTypes.CONTINUE
             case Token.Goto => ControlStructureTypes.GOTO
@@ -105,6 +108,13 @@ trait AstForStatementCreator(implicit withSchemaValidation: ValidationMode) {
             .code(branchStatement.toString)
 
         Ast(controlNode)
+    }
+
+    private def astForDeclarationStatement(fileName: String, declarationStatement: DeclarationStatement): Seq[Ast] = {
+        declarationStatement.declaration match {
+            case Some(declaration) => astForDeclaration(fileName, "", declaration)
+            case None => Seq()
+        }
     }
 
 }
