@@ -4,7 +4,7 @@ import io.joern.x2cpg.ValidationMode
 import io.joern.x2cpg.Ast
 import io.joern.gosrc2cpg.ast.nodes.*
 import io.joern.x2cpg.utils.NodeBuilders.newModifierNode
-import io.shiftleft.codepropertygraph.generated.ModifierTypes
+import io.shiftleft.codepropertygraph.generated.{DispatchTypes, ModifierTypes, Operators}
 
 import scala.collection.mutable.ListBuffer
 
@@ -58,6 +58,20 @@ trait AstForSpecificationCreator(implicit schemaValidationMode: ValidationMode) 
                         ""
                     )
                     asts.addOne(Ast(local))
+                    
+                    //  Treat assignment statement as a call node
+                    val call = callNode(
+                        value,
+                        value.code,
+                        Operators.assignment,
+                        Operators.assignment,
+                        DispatchTypes.STATIC_DISPATCH
+                    )
+                    val leftAst = astForExpression(fileName, identifier)
+                    val rightAst = astForExpression(fileName, value)
+                    asts.addOne(callAst(
+                        call, Seq(leftAst, rightAst)
+                    ))
                 }
                 index += 1
             }
