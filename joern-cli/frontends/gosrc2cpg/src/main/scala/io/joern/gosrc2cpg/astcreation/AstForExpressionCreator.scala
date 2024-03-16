@@ -231,11 +231,21 @@ trait AstForExpressionCreator(implicit validationMode: ValidationMode) {
 
     private def astForBasicLiteral(fileName: String, basicLiteral: BasicLiteralExpression): Ast = {
         val typeName = basicLiteral.kind match {
-            case Token.Int => "int"
-            case Token.Float => "float32"
-            case Token.Imag => "imag"
-            case Token.Char => "char"
-            case Token.String => "string"
+            case Token.Int =>
+                usedPrimitiveTypes.add("int")
+                "int"
+            case Token.Float =>
+                usedPrimitiveTypes.add("float32")
+                "float32"
+            case Token.Imag =>
+                usedPrimitiveTypes.add("imag")
+                "imag"
+            case Token.Char =>
+                usedPrimitiveTypes.add("char")
+                "char"
+            case Token.String =>
+                usedPrimitiveTypes.add("string")
+                "string"
             case _ => "any"
         }
         val literal = literalNode(
