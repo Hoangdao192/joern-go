@@ -147,7 +147,7 @@ trait AstForExpressionCreator(implicit validationMode: ValidationMode) {
         methodAst(
             method,
             parameters.map(parameter => Ast(parameter)),
-            bodyAst,
+            bodyAst.head,
             returnNode
         )
     }

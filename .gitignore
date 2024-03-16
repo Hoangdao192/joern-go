@@ -34,6 +34,7 @@ null
 **/SwiftAstGen-linux
 **/php2cpg/bin
 **/c2cpg/lib
+out
 /foo.c
 /woo.c
 /cpg_*.bin.zip

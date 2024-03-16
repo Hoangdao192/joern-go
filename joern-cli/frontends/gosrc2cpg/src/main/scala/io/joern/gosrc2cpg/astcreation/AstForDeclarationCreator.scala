@@ -55,7 +55,7 @@ trait AstForDeclarationCreator(implicit schemaValidationMode: ValidationMode) { 
                 methodAst(
                     methodNode_,
                     params.map(param => Ast(param)),
-                    bodyAst,
+                    bodyAst.head,
                     returnNode
                 )
             }

@@ -85,7 +85,7 @@ class AstCreator(rootNode: FileNode, filename: String, goModule: GoModule, prote
     private def astForGoAstNode(node: Node, parentFullname: String, filePath: String): Seq[Ast] = {
         val asts: Seq[Ast] = node match {
             case declaration: Declaration => astForDeclaration(filePath, parentFullname, declaration)
-            case statement: Statement => Seq(astForStatement(filePath, statement))
+            case statement: Statement => astForStatement(filePath, statement)
             case expression: Expression => Seq(astForExpression(filePath, expression))
             case specification: Specification => astForSpecification(filePath,parentFullname, specification)
             case unknown => {
