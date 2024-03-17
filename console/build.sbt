@@ -13,10 +13,6 @@ val CommonsLangVersion    = "3.12.0"
 dependsOn(
   Projects.semanticcpg,
   Projects.macros,
-  Projects.javasrc2cpg,
-  Projects.jssrc2cpg,
-  Projects.php2cpg,
-  Projects.pysrc2cpg,
   Projects.x2cpg % "compile->compile;test->test"
 )
 
@@ -35,4 +31,4 @@ libraryDependencies ++= Seq(
   "org.scalatest"        %% "scalatest"            % Versions.scalatest % Test
 )
 
-Test / compile := (Test / compile).dependsOn((Projects.c2cpg / stage)).value
+Test / compile := (Test / compile).value
