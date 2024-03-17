@@ -1,7 +1,6 @@
 package io.joern.gosrc2cpg.astcreation
 
-import io.joern.x2cpg.ValidationMode
-import io.joern.x2cpg.Ast
+import io.joern.x2cpg.{Ast, Defines, ValidationMode}
 import io.joern.gosrc2cpg.ast.nodes.*
 import io.joern.x2cpg.utils.NodeBuilders.newModifierNode
 import io.shiftleft.codepropertygraph.generated.{DispatchTypes, ModifierTypes, Operators}
@@ -51,12 +50,17 @@ trait AstForSpecificationCreator(implicit schemaValidationMode: ValidationMode) 
                         astForExpression(fileName, value.asInstanceOf[FunctionLiteral])
                     )
                 } else {
+                    val typeFullName = valueSpecification.typeExpression match {
+                        case Some(typeExpression) => getTypeFullNameFromExpression(typeExpression)
+                        case None => Defines.Unknown
+                    }
                     //  TODO: Handle type
                     val local = localNode(
                         identifier, identifier.name.get,
                         identifier.code,
-                        ""
+                        typeFullName
                     )
+                    scope.addToScope(identifier.name.get, (local, typeFullName))
                     asts.addOne(Ast(local))
                     
                     //  Treat assignment statement as a call node
@@ -74,6 +78,19 @@ trait AstForSpecificationCreator(implicit schemaValidationMode: ValidationMode) 
                     ))
                 }
                 index += 1
+            } else {
+                val typeFullName = valueSpecification.typeExpression match {
+                    case Some(typeExpression) => getTypeFullNameFromExpression(typeExpression)
+                    case None => Defines.Unknown
+                }
+                //  TODO: Handle type
+                val local = localNode(
+                    identifier, identifier.name.get,
+                    identifier.code,
+                    typeFullName
+                )
+                scope.addToScope(identifier.name.get, (local, typeFullName))
+                asts.addOne(Ast(local))
             }
         }
 

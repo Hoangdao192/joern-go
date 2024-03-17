@@ -1,6 +1,6 @@
 package io.joern.gosrc2cpg.astcreation
 
-import io.joern.gosrc2cpg.ast.GoModule
+import io.joern.gosrc2cpg.ast.{GoModule, Token}
 import io.joern.gosrc2cpg.ast.nodes.*
 import io.joern.x2cpg.{Ast, Defines, ValidationMode}
 import io.joern.gosrc2cpg.Constant
@@ -85,7 +85,15 @@ trait AstCreatorHelper(implicit withSchemaValidation: ValidationMode) {
                 val typeName = fields.map(field => {
                     val expression = field.typeExpression.get
                     expression match {
-                        case identifier: Identifier => identifier.name.get
+                        case identifier: Identifier =>
+                            identifier.name match {
+                                case Some(name) =>
+                                    if (Constant.PRIMITIVE_TYPES.contains(name)) {
+                                        usedPrimitiveTypes.add(name)
+                                    }
+                                    name
+                                case None => Defines.Unknown
+                            }
                         case _ =>
                             println("[getFunctionReturnType] Not handled type expression " + expression.getClass.getTypeName)
                             ""
@@ -158,6 +166,16 @@ trait AstCreatorHelper(implicit withSchemaValidation: ValidationMode) {
                 case Some(name) => (name, Constant.PRIMITIVE_TYPES.contains(name))
                 case None => (Defines.Unknown, false)
             }
+            case basicLiteralExpression: BasicLiteralExpression =>
+                val typeName = basicLiteralExpression.kind match {
+                    case Token.Int => "int"
+                    case Token.Float => "float32"
+                    case Token.Imag => "imag"
+                    case Token.Char => "char"
+                    case Token.String => "string"
+                    case _ => Defines.Unknown
+                }
+                (typeName, Constant.PRIMITIVE_TYPES.contains(typeName))
             case arrayType: ArrayType =>
                 val (fullname, primitive) = arrayType.element match {
                     case Some(elementIdentifier) => resolveType(elementIdentifier)

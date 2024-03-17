@@ -36,6 +36,7 @@ class TypeSpecification extends Specification {
 class ValueSpecification extends Specification {
   var documentation: Option[CommentGroup] = None
   var names: ListBuffer[Identifier] = new ListBuffer()
+  @JsonProperty("type")
   var typeExpression: Option[Expression] = None
   var values: ListBuffer[Expression] = new ListBuffer()
   var comment: Option[CommentGroup] = None

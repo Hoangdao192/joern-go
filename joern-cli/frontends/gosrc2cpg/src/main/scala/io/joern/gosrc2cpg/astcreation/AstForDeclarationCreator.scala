@@ -43,13 +43,15 @@ trait AstForDeclarationCreator(implicit schemaValidationMode: ValidationMode) { 
 
                 val methodNode_ = methodNode(
                     functionDecl, functionName,
-                    functionDecl.code, methodFullName, None, fileName
+                    functionDecl.code, methodFullName, fileName
                 )
 
                 namespaceStack.push(methodNode_)
+                scope.pushNewScope(methodNode_)
 
                 val bodyAst = astForStatement(fileName, functionDecl.body.get)
-
+                
+                scope.popScope()
                 namespaceStack.pop()
 
                 methodAst(

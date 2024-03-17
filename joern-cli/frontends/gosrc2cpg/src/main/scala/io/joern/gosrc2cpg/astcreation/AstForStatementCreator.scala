@@ -3,8 +3,8 @@ package io.joern.gosrc2cpg.astcreation
 import io.joern.gosrc2cpg.ast.Token
 import io.joern.x2cpg.{Ast, Defines, ValidationMode}
 import io.joern.gosrc2cpg.ast.nodes.*
-import io.shiftleft.codepropertygraph.generated.ControlStructureTypes
-import io.shiftleft.codepropertygraph.generated.nodes.{NewBlock, NewControlStructure}
+import io.shiftleft.codepropertygraph.generated.{ControlStructureTypes, DispatchTypes, Operators}
+import io.shiftleft.codepropertygraph.generated.nodes.{NewBlock, NewControlStructure, NewReturn}
 
 import scala.collection.mutable.ListBuffer
 
@@ -13,6 +13,7 @@ trait AstForStatementCreator(implicit withSchemaValidation: ValidationMode) {
 
     def astForStatement(fileName: String, statement: Statement): Seq[Ast] = {
         statement match {
+            case assignStatement: AssignStatement => astForAssignStatement(fileName, assignStatement)
             case declarationStatement: DeclarationStatement => astForDeclarationStatement(fileName, declarationStatement)
             case ifStatement: IfStatement => Seq(astForIfStatement(fileName, ifStatement))
             case switchStatement: SwitchStatement => Seq(astForSwitchStatement(fileName, switchStatement))
@@ -21,6 +22,7 @@ trait AstForStatementCreator(implicit withSchemaValidation: ValidationMode) {
             case rangeStatement: RangeStatement => Seq(astForRangeStatement(fileName, rangeStatement))
             case blockStatement: BlockStatement => Seq(astForBlockStatement(fileName, blockStatement))
             case branchStatement: BranchStatement => Seq(astForBranchStatement(fileName, branchStatement))
+            case returnStatement: ReturnStatement => Seq(astForReturnStatement(fileName, returnStatement))
             case _ => Seq()
         }
     }
@@ -115,6 +117,94 @@ trait AstForStatementCreator(implicit withSchemaValidation: ValidationMode) {
             case Some(declaration) => astForDeclaration(fileName, "", declaration)
             case None => Seq()
         }
+    }
+
+    private def astForReturnStatement(fileName: String, returnStatement: ReturnStatement): Ast = {
+        val returnNode = NewReturn()
+            .code(returnStatement.code)
+        val arguments = returnStatement.results.map(e => astForExpression(fileName, e))
+        returnAst(returnNode, arguments.toSeq)
+    }
+
+    private def astForAssignStatement(fileName: String, assignmentStatement: AssignStatement): Seq[Ast] = {
+        val (isDefineAssign, operator) = assignmentStatement.token match {
+            case Token.Assign => (false, Operators.assignment)
+            case Token.Define => (true, Operators.assignment)
+            case Token.AddAssign => (false, Operators.assignmentPlus)
+            case Token.SubAssign => (false, Operators.assignmentMinus)
+            case Token.MulAssign => (false, Operators.assignmentMultiplication)
+            case Token.QuoAssign => (false, Operators.assignmentDivision)
+            case Token.RemAssign => (false, Operators.assignmentModulo)
+            case Token.AndAssign => (false, Operators.assignmentAnd)
+            case Token.OrAssign => (false, Operators.assignmentOr)
+            case Token.XorAssign => (false, Operators.assignmentXor)
+            case Token.ShlAssign => (false, Operators.assignmentShiftLeft)
+            case Token.ShrAssign => (false, Operators.assignmentArithmeticShiftRight)
+            case _ => (false, Defines.Unknown)
+        }
+        var asts = ListBuffer[Ast]()
+        if (isDefineAssign) {
+            val leftExpressions = assignmentStatement.lhs
+            val values = assignmentStatement.rhs
+
+            var index: Int = 0
+            for (expr <- leftExpressions) {
+                expr match {
+                    case identifier: Identifier =>
+                        if (values.length > index) {
+                            var value = values(index)
+                            if (value.isInstanceOf[FunctionLiteral]) {
+                                asts.addOne(
+                                    astForExpression(fileName, value.asInstanceOf[FunctionLiteral])
+                                )
+                            } else {
+                                val typeFullName = getTypeFullNameFromExpression(value)
+                                val local = localNode(
+                                    identifier, identifier.name.get,
+                                    identifier.code,
+                                    typeFullName
+                                )
+                                scope.addToScope(identifier.name.get, (local, typeFullName))
+                                asts.addOne(Ast(local))
+
+                                //  Treat assignment statement as a call node
+                                val call = callNode(
+                                    value,
+                                    value.code,
+                                    Operators.assignment,
+                                    Operators.assignment,
+                                    DispatchTypes.STATIC_DISPATCH
+                                )
+                                val leftAst = astForExpression(fileName, identifier)
+                                val rightAst = astForExpression(fileName, value)
+                                asts.addOne(callAst(
+                                    call, Seq(leftAst, rightAst)
+                                ))
+                            }
+                            index += 1
+                        }
+                    case _ => {}
+                }
+            }
+        }
+        else  {
+            val leftExprAst = assignmentStatement.lhs.map(expr => astForExpression(
+                fileName, expr
+            ))
+            val rightExprAst = assignmentStatement.rhs.map(expr => astForExpression(
+                fileName, expr
+            ))
+            val typeFullName = getTypeFullNameFromExpression(assignmentStatement.rhs.head)
+            val call = callNode(
+                assignmentStatement, assignmentStatement.code,
+                operator, operator, DispatchTypes.STATIC_DISPATCH,
+                None, Option(typeFullName)
+            )
+            asts.addOne(
+                callAst(call, leftExprAst.toSeq ++: rightExprAst.toSeq)
+            )
+        }
+        asts.toSeq
     }
 
 }

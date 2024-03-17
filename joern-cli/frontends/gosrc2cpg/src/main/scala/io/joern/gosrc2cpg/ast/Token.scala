@@ -42,7 +42,21 @@ object Token extends Enumeration {
   val Constant = 64
   val Type = 84
   val Var = 85
-  
+
+  //  Assignment token
+  val Assign    = 42 // =
+  val Define    = 47 // :=
+  val AddAssign = 23 // "+="
+  val SubAssign = 24 // -=
+  val MulAssign = 25 // *=
+  val QuoAssign = 26 // /=
+  val RemAssign = 27 // "%="
+  val AndAssign = 28 // &=
+  val OrAssign  = 29 // |=
+  val XorAssign = 30 // ^=
+  val ShlAssign = 31 // <<=
+  val ShrAssign = 32 // >>=
+
 //  AND // &
 //  OR // |
 //  XOR // ^

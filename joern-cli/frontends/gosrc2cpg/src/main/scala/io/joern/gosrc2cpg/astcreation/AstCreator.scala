@@ -7,6 +7,7 @@ import org.slf4j.{Logger, LoggerFactory}
 import overflowdb.BatchedUpdate.DiffGraphBuilder
 import com.fasterxml.jackson.databind.ObjectMapper
 import io.joern.gosrc2cpg.ast.GoModule
+import io.joern.x2cpg.datastructures.Scope
 
 import java.nio.file.Paths
 import java.util
@@ -25,9 +26,10 @@ class AstCreator(rootNode: FileNode, filename: String, goModule: GoModule, prote
     protected val logger: Logger = LoggerFactory.getLogger(classOf[AstCreator])
     protected val objectMapper: ObjectMapper = ObjectMapper()
     protected val namespaceStack: util.Stack[NewNode] = new util.Stack()
-    protected val namespaceMap: util.Map[String, NewNode] = new util.HashMap()
+    protected val namespaceMap: util.Map[String, NewNamespaceBlock] = new util.HashMap()
     protected val typeSet: util.Set[String] = new util.HashSet[String]()
     protected var globalAst: Option[Ast] = None
+    protected val scope: Scope[String, (NewNode, String), NewNode] = new Scope()
 
     def createAst(): DiffGraphBuilder = {
         val ast = astForTranslationUnit(rootNode)
@@ -62,10 +64,13 @@ class AstCreator(rootNode: FileNode, filename: String, goModule: GoModule, prote
     }
 
     private def astForTranslationUnit(root: FileNode): Ast = {
-        val (fullname, namespaceAst) = root.name match {
+        val (fullname, namespaceBlock, namespaceAst) = root.name match {
             case Some(packageIdent) => astForPackageNode(root.filePath, root.name)
             case None =>
-                (goModule.moduleName, Ast(NewNamespaceBlock().name("\\").fullName(goModule.moduleName).filename(root.filePath)))
+                val block = NewNamespaceBlock()
+                    .name("\\")
+                    .fullName(goModule.moduleName).filename(root.filePath)
+                (goModule.moduleName, block, Ast(block))
         }
 
         namespaceStack.push(namespaceAst.nodes.head)
@@ -74,10 +79,14 @@ class AstCreator(rootNode: FileNode, filename: String, goModule: GoModule, prote
         val parentPath = Paths.get(goModule.modulePath);
         val childPath = Paths.get(root.filePath)
         val filePath = parentPath.relativize(childPath).toString
+        scope.pushNewScope(namespaceBlock)
         for (decl <- root.declarations) {
-            childrenAst.addAll(astForGoAstNode(decl, fullname, filePath))
+            childrenAst.addAll(
+                astForGoAstNode(decl, fullname, filePath)
+            )
         }
-        
+
+        scope.popScope()
         namespaceStack.pop()
         namespaceAst.withChildren(childrenAst)
     }
@@ -97,7 +106,7 @@ class AstCreator(rootNode: FileNode, filename: String, goModule: GoModule, prote
     }
 
     private def astForPackageNode(filename: String,
-                                  packageIdentifier: Option[Identifier]): (String, Ast) = {
+                                  packageIdentifier: Option[Identifier]): (String, NewNamespaceBlock, Ast) = {
         val (name, fullname) = packageIdentifier match {
             case Some(packageDecl) =>
                 (packageDecl.name.get, getPackageFullname(goModule, filename, packageDecl))
@@ -118,7 +127,7 @@ class AstCreator(rootNode: FileNode, filename: String, goModule: GoModule, prote
         namespaceMap.put(
             fullname, namespaceBlock
         )
-        (fullname, Ast(namespaceBlock))
+        (fullname, namespaceBlock, Ast(namespaceBlock))
     }
 
     def astForFieldListNode(filename: String, fieldList: FieldList): Seq[Ast] = {

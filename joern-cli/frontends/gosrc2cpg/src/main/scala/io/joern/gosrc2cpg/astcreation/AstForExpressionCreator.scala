@@ -257,15 +257,33 @@ trait AstForExpressionCreator(implicit validationMode: ValidationMode) {
     }
 
     private def astForIdentifier(fileName: String, identifier: Identifier): Ast = {
-        if (identifier.name.get.equals("true") || identifier.name.get.equals("false")) {
-            val literal = literalNode(
-                identifier,
-                identifier.code,
-                "bool"
-            )
-            Ast(literal)
-        } else {
-            Ast()
+        identifier.name match {
+            case Some(name) =>
+                if (!name.equals("_")) {
+                    scope.lookupVariable(name) match {
+                        case Some((localNode, typeFullname)) =>
+                            val identNode = identifierNode(
+                                identifier, name, identifier.code,
+                                typeFullname
+                            )
+                            Ast(identNode).withRefEdge(identNode, localNode)
+                        case None => Ast()
+                    }
+                } else {
+                    Ast()
+                }
+            case None => Ast()
         }
+
+//        if (identifier.name.get.equals("true") || identifier.name.get.equals("false")) {
+//            val literal = literalNode(
+//                identifier,
+//                identifier.code,
+//                "bool"
+//            )
+//            Ast(literal)
+//        } else {
+//            Ast()
+//        }
     }
 }

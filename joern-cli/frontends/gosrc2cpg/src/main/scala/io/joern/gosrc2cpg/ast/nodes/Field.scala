@@ -1,11 +1,12 @@
 package io.joern.gosrc2cpg.ast.nodes
 
-import com.fasterxml.jackson.annotation.JsonProperty
+import com.fasterxml.jackson.annotation.{JsonProperty, JsonSetter, Nulls}
 
 import scala.collection.mutable.ListBuffer
 
 class Field extends Node  {
   var documentation: Option[CommentGroup] = None
+  @JsonSetter(nulls = Nulls.SKIP)
   var names: ListBuffer[Identifier] = new ListBuffer()
   @JsonProperty("type")
   var typeExpression: Option[Expression] = None
