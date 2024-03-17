@@ -16,7 +16,9 @@ trait AstForSpecificationCreator(implicit schemaValidationMode: ValidationMode) 
             ))
             case valueSpecification: ValueSpecification => astForValueSpecification(fileName, valueSpecification)
             case typeSpecification: TypeSpecification => astForTypeSpecification(fileName, parentFullName, typeSpecification)
-            case _ => Seq()
+            case unknown =>
+                logger.error(s"Unhandled expression node ${unknown.nodeType}")
+                Seq()
         }
     }
 

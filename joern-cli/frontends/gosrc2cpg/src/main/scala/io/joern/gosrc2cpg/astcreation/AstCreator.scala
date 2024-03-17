@@ -98,7 +98,7 @@ class AstCreator(rootNode: FileNode, filename: String, goModule: GoModule, prote
             case expression: Expression => Seq(astForExpression(filePath, expression))
             case specification: Specification => astForSpecification(filePath,parentFullname, specification)
             case unknown => {
-                logger.warn(s"Unknown node type")
+                logger.warn(s"Unhandled node type ${unknown.nodeType}")
                 Seq()
             }
         }

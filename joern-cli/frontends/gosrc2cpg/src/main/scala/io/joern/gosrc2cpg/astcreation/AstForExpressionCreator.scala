@@ -42,6 +42,9 @@ trait AstForExpressionCreator(implicit validationMode: ValidationMode) {
             case identifier: Identifier => astForIdentifier(
                 fileName, identifier
             )
+            case unknown =>
+                logger.error(s"Unhandled expression node ${unknown.nodeType}")
+                Ast()
         }
     }
 

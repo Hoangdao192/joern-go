@@ -18,8 +18,8 @@ trait AstForDeclarationCreator(implicit schemaValidationMode: ValidationMode) { 
             case genericDeclaration: GenericDeclaration => astForGenericDeclaration(
                 fileName, parentFullname, genericDeclaration
             )
-            case _ => {
-                logger.warn(s"Unhandled declaration")
+            case unknown => {
+                logger.warn(s"Unhandled declaration type ${unknown.nodeType}")
                 Seq()
             }
         }

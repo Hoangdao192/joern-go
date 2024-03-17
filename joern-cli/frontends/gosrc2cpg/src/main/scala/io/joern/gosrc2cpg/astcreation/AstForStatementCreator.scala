@@ -23,7 +23,9 @@ trait AstForStatementCreator(implicit withSchemaValidation: ValidationMode) {
             case blockStatement: BlockStatement => Seq(astForBlockStatement(fileName, blockStatement))
             case branchStatement: BranchStatement => Seq(astForBranchStatement(fileName, branchStatement))
             case returnStatement: ReturnStatement => Seq(astForReturnStatement(fileName, returnStatement))
-            case _ => Seq()
+            case unknown =>
+                logger.error(s"Unhandled expression node ${unknown.nodeType}")
+                Seq()
         }
     }
 

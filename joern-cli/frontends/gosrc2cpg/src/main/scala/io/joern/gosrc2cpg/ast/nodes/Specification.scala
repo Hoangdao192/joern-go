@@ -7,6 +7,7 @@ import scala.collection.mutable.ListBuffer
 @JsonTypeInfo(
   use = JsonTypeInfo.Id.NAME,
   include = JsonTypeInfo.As.PROPERTY,
+  visible = true,
   property = "nodeType")
 @JsonSubTypes(Array(
   new JsonSubTypes.Type(value = classOf[ImportSpecification], name = "ImportSpecification"),
