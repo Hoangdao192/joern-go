@@ -1,5 +1,6 @@
 package io.joern.gosrc2cpg.astcreation
 
+import io.joern.gosrc2cpg.Constant.PrimitiveTypes
 import io.joern.gosrc2cpg.ast.Token
 import io.joern.x2cpg.{Ast, Defines, ValidationMode}
 import io.joern.gosrc2cpg.ast.nodes.*
@@ -262,7 +263,15 @@ trait AstForExpressionCreator(implicit validationMode: ValidationMode) {
     private def astForIdentifier(fileName: String, identifier: Identifier): Ast = {
         identifier.name match {
             case Some(name) =>
-                if (!name.equals("_")) {
+                if (identifier.name.get.equals("true") || identifier.name.get.equals("false")) {
+                    val literal = literalNode(
+                        identifier,
+                        identifier.code,
+                        PrimitiveTypes.BOOLEAN
+                    )
+                    Ast(literal)
+                }
+                else if (!name.equals("_")) {
                     scope.lookupVariable(name) match {
                         case Some((localNode, typeFullname)) =>
                             val identNode = identifierNode(
@@ -278,15 +287,15 @@ trait AstForExpressionCreator(implicit validationMode: ValidationMode) {
             case None => Ast()
         }
 
-//        if (identifier.name.get.equals("true") || identifier.name.get.equals("false")) {
-//            val literal = literalNode(
-//                identifier,
-//                identifier.code,
-//                "bool"
-//            )
-//            Ast(literal)
-//        } else {
-//            Ast()
-//        }
+        //        if (identifier.name.get.equals("true") || identifier.name.get.equals("false")) {
+        //            val literal = literalNode(
+        //                identifier,
+        //                identifier.code,
+        //                "bool"
+        //            )
+        //            Ast(literal)
+        //        } else {
+        //            Ast()
+        //        }
     }
 }

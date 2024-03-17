@@ -23,6 +23,10 @@ trait AstForStatementCreator(implicit withSchemaValidation: ValidationMode) {
             case blockStatement: BlockStatement => Seq(astForBlockStatement(fileName, blockStatement))
             case branchStatement: BranchStatement => Seq(astForBranchStatement(fileName, branchStatement))
             case returnStatement: ReturnStatement => Seq(astForReturnStatement(fileName, returnStatement))
+            case expressionStatement: ExpressionStatement => expressionStatement.expression match {
+                case Some(expression) => Seq(astForExpression(fileName, expression))
+                case None => Seq()
+            }
             case unknown =>
                 logger.error(s"Unhandled expression node ${unknown.nodeType}")
                 Seq()
@@ -31,15 +35,39 @@ trait AstForStatementCreator(implicit withSchemaValidation: ValidationMode) {
 
     private def astForIfStatement(fileName: String, ifStatement: IfStatement): Ast = {
         val conditionAst = astForExpression(fileName, ifStatement.condition.get)
-        val ifNode = NewControlStructure()
-            .controlStructureType(ControlStructureTypes.IF)
-            .code(conditionAst.toString)
+        val ifNode = controlStructureNode(
+            ifStatement, ControlStructureTypes.IF, ifStatement.code
+        )
 
-        val bodyAst = astForBlockStatement(fileName, ifStatement.body.get)
-        val elseAst = astForStatement(fileName, ifStatement.elseStatement.get)
+        val bodyAst = ifStatement.body match {
+            case Some(body) => astForBlockStatement(fileName, ifStatement.body.get)
+            case None => Ast()
+        }
+        val elseAst = ifStatement.elseStatement match {
+            case Some(elseStatement) => elseStatement match {
+                case blockStatement: BlockStatement => {
+                    val elseNode = controlStructureNode(elseStatement, ControlStructureTypes.ELSE, "else")
+                    val elseAst = astForStatement(fileName, blockStatement)
+                    Ast(elseNode).withChildren(elseAst)
+                }
+                case childIfStatement: IfStatement => {
+                    val elseNode = controlStructureNode(childIfStatement, ControlStructureTypes.ELSE, "else")
+                    val elseBlock = blockNode(childIfStatement, childIfStatement.code, "unit")
+                    scope.pushNewScope(elseBlock)
+                    val a = astForStatement(fileName, childIfStatement)
+                    setArgumentIndices(a)
+                    scope.popScope()
+                    Ast(elseNode).withChild(blockAst(elseBlock, a.toList))
+                }
+                case unknown =>
+                    logger.warn(s"[astForIfStatement] Unhandled else statement ${unknown.nodeType}")
+                    Ast()
+            }
+            case None => Ast()
+        }
 
         Ast(ifNode)
-            .withChildren(Seq(conditionAst, bodyAst, elseAst.head))
+            .withChildren(Seq(conditionAst, bodyAst, elseAst))
             .withConditionEdge(ifNode, conditionAst.root.get)
     }
 
@@ -92,7 +120,7 @@ trait AstForStatementCreator(implicit withSchemaValidation: ValidationMode) {
             .code(blockStatement.code)
             .typeFullName("unit")
             .lineNumber(line(blockStatement))
-            .columnNumber(column(blockStatement ))
+            .columnNumber(column(blockStatement))
         val childrenAst = ListBuffer[Ast]()
         blockStatement.statements.foreach(statement => childrenAst.addAll(astForStatement(fileName, statement)))
         blockAst(blockNode, childrenAst.toList)
@@ -189,7 +217,7 @@ trait AstForStatementCreator(implicit withSchemaValidation: ValidationMode) {
                 }
             }
         }
-        else  {
+        else {
             val leftExprAst = assignmentStatement.lhs.map(expr => astForExpression(
                 fileName, expr
             ))

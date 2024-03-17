@@ -93,6 +93,7 @@ class IfStatement extends Statement {
     var initialization: Option[Statement] = None
     var condition: Option[Expression] = None
     var body: Option[BlockStatement] = None
+    @JsonProperty("else")
     var elseStatement: Option[Statement] = None
 }
 
