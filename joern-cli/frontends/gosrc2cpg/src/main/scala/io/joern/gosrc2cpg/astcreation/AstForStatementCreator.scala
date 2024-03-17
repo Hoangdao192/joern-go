@@ -99,7 +99,9 @@ trait AstForStatementCreator(implicit withSchemaValidation: ValidationMode) {
     }
 
     private def astForForStatement(fileName: String, forStatement: ForStatement): Ast = {
+        scope.pushNewScope(blockNode(forStatement, "", ""))
         val initAst = astForStatement(fileName, forStatement.initialization.get)
+        scope.popScope()
         val conditionAst = astForExpression(fileName, forStatement.condition.get)
         val updateAst = astForStatement(fileName, forStatement.post.get)
         val bodyAst = astForStatement(fileName, forStatement.body.get)
@@ -107,7 +109,7 @@ trait AstForStatementCreator(implicit withSchemaValidation: ValidationMode) {
         //  TODO: Handle for loop code
         val forNode = NewControlStructure()
             .controlStructureType(ControlStructureTypes.FOR)
-            .code("")
+            .code(forStatement.code)
         forAst(forNode, Seq(), initAst, Seq(conditionAst), updateAst, bodyAst.head)
     }
 
