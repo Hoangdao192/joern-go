@@ -5,13 +5,23 @@ import io.joern.gosrc2cpg.ast.nodes.*
 import io.joern.x2cpg.{Ast, Defines, ValidationMode}
 import io.joern.gosrc2cpg.Constant
 import io.shiftleft.codepropertygraph.generated.EvaluationStrategies
-import io.shiftleft.codepropertygraph.generated.nodes.{NewMethodParameterIn, NewMethodReturn, NewNode, NewUnknown}
+import io.shiftleft.codepropertygraph.generated.nodes.{NewNamespaceBlock, NewMethod, NewMethodParameterIn, NewMethodReturn, NewUnknown}
 
 import java.nio.file.Paths
 import scala.collection.mutable.ListBuffer
 
 trait AstCreatorHelper(implicit withSchemaValidation: ValidationMode) {
     this: AstCreator =>
+
+    def getCurrentScopeFullName(): String = {
+        namespaceStack.peek() match {
+            case namespaceBlock: NewNamespaceBlock => namespaceBlock.fullName
+            case methodNode: NewMethod => methodNode.fullName
+            case other =>
+                logger.warn(s"Unknown scope type ${other.getClass}")
+                ""
+        }
+    }
 
     def getPackageFullname(goModule: GoModule, packageFilePath: String, packageIdentifier: Identifier): String = {
         val relativePath = Paths.get(goModule.modulePath).relativize(
@@ -48,9 +58,11 @@ trait AstCreatorHelper(implicit withSchemaValidation: ValidationMode) {
                     val parameterType = astForExpression(fileName, field.typeExpression.get)
                     for (fieldIdentifier <- field.names) {
                         val parameterName = fieldIdentifier.name.get
-                        val parameterTypeName = field.typeExpression.get match {
-                            case identifier: Identifier => identifier.name.get
-                            case _ => ""
+                        val parameterTypeName = field.typeExpression match {
+                            case Some(typeExpression) => getTypeFullNameFromExpression(typeExpression)
+                            case None =>
+                                logger.warn("Field not have type expression")
+                                Defines.Unknown
                         }
                         val code = s"$parameterName $parameterTypeName"
                         val parameterNodeIn = parameterInNode(
@@ -163,7 +175,14 @@ trait AstCreatorHelper(implicit withSchemaValidation: ValidationMode) {
     private def resolveType(expression: Expression): (String, Boolean) = {
         expression match {
             case identifier: Identifier => identifier.name match {
-                case Some(name) => (name, Constant.PRIMITIVE_TYPES.contains(name))
+                case Some(name) =>
+                    val isPrimitive = Constant.PRIMITIVE_TYPES.contains(name)
+                    if (isPrimitive) {
+                        (name, isPrimitive)
+                    } else {
+                        usedPrimitiveTypes.add(getCurrentScopeFullName() + "." + name)
+                        (getCurrentScopeFullName() + "." + name, isPrimitive)
+                    }
                 case None => (Defines.Unknown, false)
             }
             case basicLiteralExpression: BasicLiteralExpression =>

@@ -36,14 +36,14 @@ trait AstForDeclarationCreator(implicit schemaValidationMode: ValidationMode) { 
 
                 val functionName = functionDecl.name.get.name.get
                 val methodFullName = namespaceStack.peek() match {
-                    case namespaceBlock: NewNamespaceBlock => namespaceBlock.fullName
-                    case methodNode: NewMethod => methodNode.fullName
+                    case namespaceBlock: NewNamespaceBlock => namespaceBlock.fullName + "." + functionName
+                    case methodNode: NewMethod => methodNode.fullName + "." + functionName
                     case _ => functionName
                 }
 
                 val methodNode_ = methodNode(
                     functionDecl, functionName,
-                    functionDecl.code, methodFullName, fileName
+                    methodFullName, methodFullName, fileName
                 )
 
                 namespaceStack.push(methodNode_)

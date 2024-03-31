@@ -10,6 +10,7 @@ class TypeResolverPass(cpg: Cpg, usedTypes: Array[String]) extends CpgPass(cpg) 
     
     override def run(diffGraph: DiffGraphBuilder): Unit = {
         usedTypes.foreach { typeName =>
+            println(typeName)
             val node = NewType()
                 .name(typeName)
                 .fullName(typeName)
