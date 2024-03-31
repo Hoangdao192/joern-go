@@ -33,7 +33,7 @@ class AstCreationPass(cpg: Cpg, config: Config, workingDir: String, goModule: Go
     override def generateParts(): Array[Array[String]] = {
 
         val binary = "/home/hoangdao/Workspace/Scala/Joern/joern-cli/frontends/gosrc2cpg/bin/go-parser/goparser"
-        val command: String = s"$binary ${config.inputPath} $workingDir"
+        val command: String = s"$binary parse ${config.inputPath} --output $workingDir"
         ExternalCommand.run(command, ".")
 
         val rootFile = new File(workingDir)
@@ -56,7 +56,7 @@ class AstCreationPass(cpg: Cpg, config: Config, workingDir: String, goModule: Go
 
     override def runOnPart(builder: DiffGraphBuilder, fileNames: Array[String]): Unit = {
         fileNames.foreach(fileName => {
-            logger.info(s"Parsing $fileName")
+            logger.warn(s"Parsing $fileName")
             val path = Paths.get(fileName).toAbsolutePath;
             var relPath = SourceFiles.toRelativePath(path.toString, config.inputPath)
             //    val fileLOC = IOUtils.readLinesInFile(path).size

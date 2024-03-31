@@ -26,7 +26,10 @@ class QueryDatabase(
   /** Determine queries across all bundles
     */
   def allQueries: List[Query] = {
-    allBundles.flatMap { bundle =>
+    val bundles = allBundles
+    println(bundles.size)
+    bundles.foreach(bundle => println(bundle.getName))
+    bundles.flatMap { bundle =>
       queriesInBundle(bundle)
     }
   }

@@ -254,6 +254,7 @@ trait InteractiveShell { this: BridgeBase =>
 trait ScriptExecution { this: BridgeBase =>
 
   def runScript(config: Config): Try[Unit] = {
+    println(config.command.getOrElse(""))
     val scriptFile = config.scriptFile.getOrElse(throw new AssertionError("no script file configured"))
     if (!Files.exists(scriptFile)) {
       Try(throw new AssertionError(s"given script file `$scriptFile` does not exist"))

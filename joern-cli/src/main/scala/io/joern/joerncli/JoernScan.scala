@@ -44,7 +44,8 @@ object JoernScan extends BridgeBase {
   val implementationVersion = getClass.getPackage.getImplementationVersion
 
   def main(args: Array[String]) = {
-    val (scanArgs, frontendArgs) = CpgBasedTool.splitArgs(args)
+    val testArgs = Seq("/home/hoangdao/Workspace/Go/Test/").toArray
+    val (scanArgs, frontendArgs) = CpgBasedTool.splitArgs(testArgs)
     optionParser.parse(scanArgs, JoernScanConfig()).foreach { config =>
       run(config, frontendArgs)
     }
@@ -164,6 +165,7 @@ object JoernScan extends BridgeBase {
     Scan.defaultOpts.tags = config.tags.split(",").filterNot(_.isEmpty)
     Scan.defaultOpts.maxCallDepth = config.maxCallDepth
 
+    println(config.language)
     val shellConfig = io.joern.console
       .Config()
       .copy(
@@ -197,7 +199,8 @@ object JoernScan extends BridgeBase {
   def downloadAndInstallQueryDatabase(version: String = ""): Unit = {
     val actualVersion = Option(version).filter(_ != "").getOrElse(JoernScanConfig.defaultDbVersion)
     File.usingTemporaryDirectory("joern-scan") { dir =>
-      val queryDbZipPath = downloadDefaultQueryDatabase(actualVersion, dir)
+      val queryDbZipPath = "/home/hoangdao/Workspace/Scala/Joern/querydb/target/universal/stage/query.zip"
+//        downloadDefaultQueryDatabase(actualVersion, dir)
       addQueryDatabase(queryDbZipPath)
     }
   }

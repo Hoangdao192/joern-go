@@ -13,7 +13,8 @@ val CommonsLangVersion    = "3.12.0"
 dependsOn(
   Projects.semanticcpg,
   Projects.macros,
-  Projects.x2cpg % "compile->compile;test->test"
+  Projects.x2cpg % "compile->compile;test->test",
+//  Projects.querydb
 )
 
 libraryDependencies ++= Seq(

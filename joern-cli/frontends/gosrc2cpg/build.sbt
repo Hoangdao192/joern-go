@@ -18,7 +18,8 @@ libraryDependencies ++= Seq(
   "io.circe"                  %% "circe-core"        % Versions.circe,
   "io.circe"                  %% "circe-generic"     % Versions.circe,
   "io.circe"                  %% "circe-parser"      % Versions.circe,
-  "com.google.code.gson"      %  "gson"             % "2.10.1"
+  "com.google.code.gson"      %  "gson"             % "2.10.1",
+  "org.apache.commons"        %  "commons-compress" % "1.26.1"
 )
 
 scalacOptions ++= Seq(

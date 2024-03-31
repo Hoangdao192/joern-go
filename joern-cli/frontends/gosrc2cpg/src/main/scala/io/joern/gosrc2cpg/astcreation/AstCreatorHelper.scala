@@ -190,6 +190,7 @@ trait AstCreatorHelper(implicit withSchemaValidation: ValidationMode) {
                 (s"*$fullname", primitive)
             case _ =>
                 logger.warn(s"Unhandled type expression ${expression.getClass.toString}")
+                logger.warn(s"Code: ${expression.code}")
                 (Defines.Unknown, false)
         }
     }
