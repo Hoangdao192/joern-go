@@ -5,15 +5,17 @@ import io.joern.console.*
 import io.joern.macros.QueryMacros.*
 import io.shiftleft.codepropertygraph.generated.nodes.{Call, ControlStructure, Identifier, Method}
 import io.shiftleft.semanticcpg.language.*
+import io.joern.dataflowengineoss.semanticsloader.Semantics
+import io.joern.dataflowengineoss.queryengine.EngineContext
 
 import scala.collection.mutable.ListBuffer
 
 object NullPointer extends QueryBundle {
-
+    implicit val engineContext: EngineContext = EngineContext(Semantics.empty)
     implicit val resolver: ICallResolver = NoResolve
 
     @q
-    def checkNullPointer(): Query =
+    def shellExec()(implicit context: EngineContext): Query =
         Query.make(
             name = "null-pointer-golang",
             author = Crew.niko,
@@ -82,7 +84,7 @@ object NullPointer extends QueryBundle {
                 }
                 uncheckedCall.toList.iter
             }),
-            tags = List(QueryTags.default)
+            tags = List(QueryTags.remoteCodeExecution, QueryTags.default)
         )
 
 }
