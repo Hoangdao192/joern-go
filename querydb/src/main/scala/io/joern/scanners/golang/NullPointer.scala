@@ -33,7 +33,7 @@ object NullPointer extends QueryBundle {
                 val uncheckedCall = ListBuffer[Call]()
                 //  Methods that use pointer as parameter
                 val methods = cpg.method.filter(method => method.parameter.typeFullName("^\\*.*").nonEmpty).l
-                println(methods.length)
+//                println(methods.length)
                 for (method <- methods) {
                     val pointerParameters = method.parameter.typeFullName("^\\*.*").l
                     //  All field access that using pointer parameter as argument
@@ -47,15 +47,14 @@ object NullPointer extends QueryBundle {
                             )
                             args.nonEmpty
                         }).l
-                    if (calls.nonEmpty) {
-                        println(s"Method ${method.name} ${method.filename}")
-                    }
+//                    if (calls.nonEmpty) {
+//                        println(s"Method ${method.name} ${method.filename}")
+//                    }
                     calls.foreach(call => {
                         val callArguments = call.argument.argumentIndex(1)
                             .filter(e => e.isInstanceOf[Identifier])
                             .map(e => e.asInstanceOf[Identifier].name)
                             .l
-                        callArguments.foreach(item => println(item))
                         var isCheckNull = false
                         try {
                             var astParent = call.astParent
@@ -98,7 +97,6 @@ object NullPointer extends QueryBundle {
                         }
                     })
                 }
-                println(uncheckedCall.size)
                 uncheckedCall.toList.iter
             }),
             tags = List(QueryTags.remoteCodeExecution, QueryTags.default)
