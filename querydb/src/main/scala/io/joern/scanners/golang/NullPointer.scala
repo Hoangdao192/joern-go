@@ -1,13 +1,15 @@
 package io.joern.scanners.golang
 
-import io.joern.scanners.*
-import io.joern.console.*
+import io.joern.console.{Query, QueryBundle, q}
 import io.joern.macros.QueryMacros.*
-import io.shiftleft.codepropertygraph.generated.nodes.{Call, ControlStructure, Identifier, Method}
-import io.shiftleft.semanticcpg.language.*
-import io.joern.dataflowengineoss.semanticsloader.Semantics
 import io.joern.dataflowengineoss.queryengine.EngineContext
-
+import io.joern.dataflowengineoss.semanticsloader.Semantics
+import io.joern.scanners.{Crew, QueryTags}
+import io.shiftleft.semanticcpg.language.{ICallResolver, NoResolve}
+import io.shiftleft.semanticcpg.language.*
+import io.joern.dataflowengineoss.language.*
+import io.shiftleft.codepropertygraph.generated.Operators
+import io.shiftleft.codepropertygraph.generated.nodes.*
 import scala.collection.mutable.ListBuffer
 
 object NullPointer extends QueryBundle {
@@ -17,36 +19,42 @@ object NullPointer extends QueryBundle {
     @q
     def shellExec()(implicit context: EngineContext): Query =
         Query.make(
-            name = "null-pointer-golang",
+            name = "test-go",
             author = Crew.niko,
-            title = "Null pointer exception",
-            description =
-                """
-                Null pointer check
-                """.stripMargin,
-            score = 4,
-            withStrRep({ cpg =>
+                title = "Field access may produce null pointer",
+            description = """
+                            |An attacker controlled parameter is used in an insecure `shell-exec` call.
+                            |
+                            |If the parameter is not validated and sanitized, this is a remote code execution.
+                            |""".stripMargin,
+            score = 5,
+            withStrRep(cpg => {
                 println("Null Pointer check")
                 val uncheckedCall = ListBuffer[Call]()
                 //  Methods that use pointer as parameter
-                val methods = cpg.method.filter(method => method.parameter.typeFullName("^\\*.*").nonEmpty)
+                val methods = cpg.method.filter(method => method.parameter.typeFullName("^\\*.*").nonEmpty).l
+//                println(methods.length)
                 for (method <- methods) {
                     val pointerParameters = method.parameter.typeFullName("^\\*.*").l
                     //  All field access that using pointer parameter as argument
                     val calls = method.call("<operator>.fieldAccess")
                         .filter(c => {
-                            val args = c.argument.argumentIndex(1).filter(arg => 
+                            val args = c.argument.argumentIndex(1).filter(arg =>
                                 arg match {
                                     case identifier: Identifier => pointerParameters.name.contains(identifier.name)
                                     case _ => false
                                 }
                             )
                             args.nonEmpty
-                        })
+                        }).l
+//                    if (calls.nonEmpty) {
+//                        println(s"Method ${method.name} ${method.filename}")
+//                    }
                     calls.foreach(call => {
                         val callArguments = call.argument.argumentIndex(1)
                             .filter(e => e.isInstanceOf[Identifier])
                             .map(e => e.asInstanceOf[Identifier].name)
+                            .l
                         var isCheckNull = false
                         try {
                             var astParent = call.astParent
@@ -71,18 +79,26 @@ object NullPointer extends QueryBundle {
                                                         isCheckNull = true
                                                     }
                                                 }
+                                            case _ => {}
                                         }
+                                    case _ => {}
                                 }
                                 if (!isCheckNull) {
                                     astParent = astParent.astParent
                                 }
                             }
                         } catch {
-                            case e: NoSuchElementException => //ignored
+                            case e: NoSuchElementException => e.printStackTrace()
+                            case nullPointer: NullPointerException => nullPointer.printStackTrace()
+                            case other => other.printStackTrace()
+                        }
+                        if (!isCheckNull) {
+                            uncheckedCall.addOne(call)
                         }
                     })
                 }
-                uncheckedCall.toList.iter
+//                uncheckedCall.toList.iter
+                ListBuffer().toList.iter
             }),
             tags = List(QueryTags.remoteCodeExecution, QueryTags.default)
         )

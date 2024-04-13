@@ -24,6 +24,7 @@ abstract class Node {
     protected var end: Int = 0
     protected val children: ListBuffer[Node] = ListBuffer()
     protected var parent: Option[Node] = None
+    protected var fullyQualifiedName: String = ""
     @JsonProperty("code")
     protected var _code: String = ""
 

@@ -40,6 +40,8 @@ abstract class Expression extends Node
 class Identifier extends Expression {
     var namePosition: Int = 0
     var name: Option[String] = None
+    var fullName: String = ""
+    var typeFullName: String = ""
 }
 
 class CallExpression extends Expression {

@@ -34,7 +34,8 @@ class AstCreationPass(cpg: Cpg, config: Config, workingDir: String, goModule: Go
 
         val binary = "/home/hoangdao/Workspace/Scala/Joern/joern-cli/frontends/gosrc2cpg/bin/go-parser/goparser"
         val command: String = s"$binary parse ${config.inputPath} --output $workingDir"
-        ExternalCommand.run(command, ".")
+        val output = ExternalCommand.run(command, ".")
+        output.foreach(strs => strs.foreach(str => logger.warn("GoParser: {}", str)))
 
         val rootFile = new File(workingDir)
         val traverse: ListBuffer[File] = ListBuffer(rootFile)
