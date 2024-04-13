@@ -26,11 +26,4 @@ object FileUtil {
         }
     }
 
-    def main(args: Array[String]): Unit = {
-        extractTarGz(
-            File("/home/hoangdao/Downloads/go1.22.0.src.tar.gz"),
-            File("/home/hoangdao/Downloads/go1.22.0.src")
-        )
-    }
-
 }

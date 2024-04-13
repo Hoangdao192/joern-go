@@ -188,13 +188,16 @@ trait AstForExpressionCreator(implicit validationMode: ValidationMode) {
     }
 
     private def astForCompositeLiteral(fileName: String, compositeLiteral: CompositeLiteral): Ast = {
-        compositeLiteral.typeExpression.get match {
-            case arrayType: ArrayType => astForArrayInitialization(fileName, compositeLiteral)
-            case identifier: Identifier => astForConstructor(fileName, compositeLiteral)
-            case expression => {
-                logger.warn(s"Unhandled type of composite literal ${expression.nodeType}")
-                Ast()
+        compositeLiteral.typeExpression match {
+            case Some(typeExpression) => compositeLiteral.typeExpression.get match {
+                case arrayType: ArrayType => astForArrayInitialization(fileName, compositeLiteral)
+                case identifier: Identifier => astForConstructor(fileName, compositeLiteral)
+                case expression => {
+                    logger.warn(s"Unhandled type of composite literal ${expression.nodeType}")
+                    Ast()
+                }
             }
+            case None => Ast()
         }
     }
 

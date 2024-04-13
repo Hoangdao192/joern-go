@@ -97,7 +97,8 @@ object NullPointer extends QueryBundle {
                         }
                     })
                 }
-                uncheckedCall.toList.iter
+//                uncheckedCall.toList.iter
+                ListBuffer().toList.iter
             }),
             tags = List(QueryTags.remoteCodeExecution, QueryTags.default)
         )
