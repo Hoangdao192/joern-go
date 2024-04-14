@@ -12,6 +12,7 @@ class Field extends Node  {
   var typeExpression: Option[Expression] = None
   var tag: Option[BasicLiteralExpression] = None
   var comment: Option[CommentGroup] = None
+  var typeFullName: String = ""
 }
 
 class FieldList extends Node {

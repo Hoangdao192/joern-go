@@ -141,7 +141,14 @@ trait AstForSpecificationCreator(implicit schemaValidationMode: ValidationMode) 
         } else {
             Ast(newModifierNode(ModifierTypes.PRIVATE))
         }
-        Ast(typeDecl).withChild(modifierAst).withChildren(
+
+        val constructor = createStructConstructor(
+            filename, typeSpecification, structType
+        )
+
+        Ast(typeDecl).withChild(modifierAst)
+            .withChild(constructor)
+            .withChildren(
             fieldAsts.map(fieldAst => {
                 val fieldModifier = if (name.headOption.exists(_.isUpper)) {
                     Ast(newModifierNode(ModifierTypes.PUBLIC))
@@ -150,6 +157,35 @@ trait AstForSpecificationCreator(implicit schemaValidationMode: ValidationMode) 
                 }
                 fieldAst.withChild(fieldModifier)
             })
+        )
+    }
+
+    private def createStructConstructor(
+                                           filename: String,
+                                           typeSpecification: TypeSpecification,
+                                           structType: StructType)
+    : Ast = {
+        val methodNode_ = methodNode(
+            structType, typeSpecification.name.get.name.get + ".<init>",
+            typeSpecification.fullName + ".<init>",
+            typeSpecification.fullName + "()",
+            filename
+        )
+
+        val modifier = if (typeSpecification.name.get.name.get.headOption.exists(_.isUpper)) {
+            newModifierNode(ModifierTypes.PUBLIC)
+        } else {
+            newModifierNode(ModifierTypes.PRIVATE)
+        }
+        
+        methodAst(
+            methodNode_,
+            Seq(),
+            Ast(),
+            methodReturnNode(
+                structType, typeSpecification.fullName
+            ),
+            Seq(modifier)
         )
     }
     

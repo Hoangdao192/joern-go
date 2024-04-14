@@ -32,6 +32,7 @@ class TypeSpecification extends Specification {
   @JsonProperty("type")
   var typeExpression: Option[Expression] = None
   var comment: Option[CommentGroup] = None
+  var fullName: String = ""
 }
 
 class ValueSpecification extends Specification {

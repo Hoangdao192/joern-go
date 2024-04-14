@@ -51,8 +51,8 @@ class AstCreationPass(cpg: Cpg, config: Config, workingDir: String, goModule: Go
         }
 
 //        Seq(workingDir).toArray
-            val arr = collect.map(file => file.getAbsolutePath).toArray(classTag[String])
-            Seq(arr).toArray
+        val arr = collect.map(file => file.getAbsolutePath).toArray(classTag[String])
+        Seq(arr).toArray
     }
 
     override def runOnPart(builder: DiffGraphBuilder, fileNames: Array[String]): Unit = {

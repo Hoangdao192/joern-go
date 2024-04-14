@@ -33,10 +33,6 @@ class AstCreator(rootNode: FileNode, filename: String, goModule: GoModule, prote
 
     def createAst(): DiffGraphBuilder = {
         val ast = astForTranslationUnit(rootNode)
-//        val asts = astForGoAstNode(rootNode)
-//        for (ast <- asts) {
-//            Ast.storeInDiffGraph(ast, diffGraph)
-//        }
         Ast.storeInDiffGraph(ast, diffGraph)
         globalAst = Option(ast)
         diffGraph

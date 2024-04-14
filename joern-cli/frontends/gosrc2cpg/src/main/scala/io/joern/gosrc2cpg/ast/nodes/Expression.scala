@@ -1,6 +1,7 @@
 package io.joern.gosrc2cpg.ast.nodes
 
-import com.fasterxml.jackson.annotation.{JsonProperty, JsonSubTypes, JsonTypeInfo}
+import com.fasterxml.jackson.annotation.JsonInclude.Include
+import com.fasterxml.jackson.annotation.{JsonInclude, JsonProperty, JsonSubTypes, JsonTypeInfo}
 
 import scala.collection.mutable.ListBuffer
 
@@ -50,6 +51,9 @@ class CallExpression extends Expression {
     var rparen: Int = 0
     var args: ListBuffer[Expression] = new ListBuffer()
     var ellipsis: Int = 0
+    var functionFullName = ""
+    var functionSignature = ""
+    var results: ListBuffer[String] = new ListBuffer()
 }
 
 class BadExpression extends Expression {
@@ -104,6 +108,10 @@ class ParenthesizedExpression extends Expression {
 class SelectorExpression extends Expression {
     var expression: Option[Expression] = None
     var selector: Option[Identifier] = None
+    var functionFullName = ""
+    var functionSignature = ""
+    @JsonInclude(Include.NON_NULL)
+    var results: ListBuffer[String] = ListBuffer()
 }
 
 class SliceExpression extends Expression {

@@ -27,6 +27,8 @@ class FunctionDeclaration extends Declaration {
   @JsonProperty("type")
   var functionType: Option[FunctionType] = None
   var body: Option[BlockStatement] = None
+  var fullName: String = ""
+  var signature: String = ""
 }
 
 class GenericDeclaration extends Declaration {

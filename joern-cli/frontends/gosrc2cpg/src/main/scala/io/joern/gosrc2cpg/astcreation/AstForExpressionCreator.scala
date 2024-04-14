@@ -1,15 +1,19 @@
 package io.joern.gosrc2cpg.astcreation
 
+import dotty.tools.dotc.ast.Trees.Ident
 import io.joern.gosrc2cpg.Constant.PrimitiveTypes
 import io.joern.gosrc2cpg.ast.Token
 import io.joern.x2cpg.{Ast, Defines, ValidationMode}
-import io.joern.gosrc2cpg.ast.nodes.*
-import io.shiftleft.codepropertygraph.generated.{DispatchTypes, Operators}
+import io.joern.gosrc2cpg.ast.nodes.{Identifier, SelectorExpression, *}
+import io.shiftleft.codepropertygraph.generated.{DispatchTypes, Operators, PropertyNames}
 
+import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
 trait AstForExpressionCreator(implicit validationMode: ValidationMode) {
     this: AstCreator =>
+
+    val mapMethodAndSignature: mutable.Map[String, Seq[String]] = mutable.HashMap()
 
     def astForExpression(fileName: String, expression: Expression): Ast = {
         expression match {
@@ -157,35 +161,116 @@ trait AstForExpressionCreator(implicit validationMode: ValidationMode) {
     }
 
     private def astForCallExpression(fileName: String, callExpression: CallExpression): Ast = {
-        val (methodName, methodFullName) = callExpression.function.get match {
-            case identifier: Identifier => (identifier.name.get, identifier.name.get)
-            case selector: SelectorExpression => {
-                val selectorName = selector.selector.get.name.get
-                val expressionName = selector.expression.get match {
-                    case identifier: Identifier => identifier.name.get
-                    case expression => {
-                        logger.warn(s"Unhandled selector expression ${expression.getClass.toString}")
-                        ""
-                    }
-                }
-                if (!expressionName.equals("")) {
-                    (selectorName, s"$expressionName.$selectorName")
-                } else {
-                    (selectorName, selectorName)
-                }
-            }
-        }
-        val call = callNode(
+        val (methodName, signature, fullName, typeFullName, receiverAst) =
+            preReqForCallNode(fileName, callExpression.function.get, callExpression)
+        mapMethodAndSignature.put(fullName, Seq(signature, typeFullName))
+        val cpgCall = callNode(
             callExpression,
             callExpression.code,
-            methodName, methodFullName, DispatchTypes.STATIC_DISPATCH
+            methodName,
+            fullName,
+            DispatchTypes.STATIC_DISPATCH,
+            Some(signature),
+            Some(typeFullName)
         )
-
-        val argumentAsts = callExpression.args.map(arg => astForExpression(fileName, arg)).toList
-        callAst(
-            call, argumentAsts
-        )
+        callAst(cpgCall, Seq(), receiverAst.headOption)
     }
+
+    private def preReqForCallNode(fileName: String, function: Expression, callExpression: CallExpression): (String, String, String, String, Seq[Ast]) = {
+        function match
+            case identifier: Identifier =>
+                var typeFullName = ""
+                if (callExpression.results != null && callExpression.results.nonEmpty) {
+                    typeFullName = callExpression.results.head
+                }
+                (
+                    identifier.name.get, callExpression.functionSignature,
+                    callExpression.functionFullName,
+                    typeFullName,
+                    Seq()
+                )
+            case selectorExpression: SelectorExpression =>
+                val xNode = selectorExpression.expression.get
+                xNode match {
+                    case identifier: Identifier =>
+                        var resultType = ""
+                        if (selectorExpression.results != null && selectorExpression.results.nonEmpty) {
+                            resultType = selectorExpression.results.head
+                        }
+                        var functionName = ""
+                        if (selectorExpression.selector.isDefined && selectorExpression.selector.get.name.isDefined) {
+                            functionName = selectorExpression.selector.get.name.get
+                        }
+                        (functionName, selectorExpression.functionSignature,
+                            selectorExpression.functionFullName,
+                            resultType,
+                            Seq(astForExpression(fileName, identifier))
+                        )
+                    case _ =>
+                        val receiverAst = astForExpression(fileName, xNode)
+                        var typeFullName = ""
+                        if (selectorExpression.results != null && selectorExpression.results.nonEmpty) {
+                            typeFullName = selectorExpression.results.head
+                        }
+                        (
+                            selectorExpression.selector.get.name.get,
+                            selectorExpression.functionSignature,
+                            selectorExpression.functionFullName,
+                            typeFullName,
+                            Seq(receiverAst)
+                        )
+//                        processReceiverAst(fileName, selectorExpression.selector.get.name.get, xNode)
+                }
+            case x =>
+                logger.warn(s"Unhandled class ${x.getClass}")
+                ("", "", "" , "", Seq())
+    }
+
+
+    private def processReceiverAst(fileName: String,
+                                   methodName: String,
+                                   expression: Expression
+                                  ): (String, String, String, String, Seq[Ast]) = {
+        val receiverAst = astForExpression(fileName, expression)
+        val receiverTypeFullName = receiverAst.root.get.properties(PropertyNames.TYPE_FULL_NAME).toString
+        val callMethodFullName: String = s"$receiverTypeFullName.$methodName"
+        var returnTypeFullNameCache: String = ""
+        var signatureCache: String = ""
+        if (mapMethodAndSignature.contains(callMethodFullName)) {
+            val seq = mapMethodAndSignature(callMethodFullName)
+            returnTypeFullNameCache = seq.head
+            signatureCache = seq.last
+        }
+        (methodName, signatureCache, callMethodFullName, returnTypeFullNameCache, Seq(receiverAst))
+    }
+
+    //    private def astForCallExpression(fileName: String, callExpression: CallExpression): Ast = {
+//
+//        val (methodName, methodFullName, signature) = callExpression.function.get match {
+//            case identifier: Identifier =>
+//                (identifier.name.get, callExpression.functionFullName, callExpression.functionSignature)
+//            case selector: SelectorExpression => {
+//                val selectorName = selector.selector match
+//                    case Some(selector) => selector.name.get
+//                    case None => ""
+//                (selectorName, selector.functionFullName, selector.functionSignature)
+//            }
+//        }
+//        val call = callNode(
+//            callExpression,
+//            callExpression.code,
+//            methodName,
+//            methodFullName,
+//            DispatchTypes.STATIC_DISPATCH,
+//            Option(signature),
+//            None
+//        )
+//
+//        val argumentAsts = callExpression.args.map(arg => astForExpression(fileName, arg)).toList
+//        callAst(
+//            call, argumentAsts
+//        )
+//    }
 
     private def astForCompositeLiteral(fileName: String, compositeLiteral: CompositeLiteral): Ast = {
         compositeLiteral.typeExpression match {

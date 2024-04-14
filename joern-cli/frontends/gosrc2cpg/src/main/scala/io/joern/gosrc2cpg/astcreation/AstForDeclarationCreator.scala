@@ -4,6 +4,9 @@ import io.joern.gosrc2cpg.ast.nodes.*
 import io.joern.x2cpg.ValidationMode
 import io.joern.x2cpg.Ast
 import io.joern.gosrc2cpg.ast.*
+import io.joern.x2cpg.utils.NodeBuilders
+import io.joern.x2cpg.utils.NodeBuilders.newModifierNode
+import io.shiftleft.codepropertygraph.generated.{EvaluationStrategies, ModifierTypes}
 import io.shiftleft.codepropertygraph.generated.nodes.{NewMethod, NewNamespaceBlock}
 
 import scala.collection.mutable.ListBuffer
@@ -35,15 +38,10 @@ trait AstForDeclarationCreator(implicit schemaValidationMode: ValidationMode) { 
                 val (params, returnNode) = generateNodeFromFunctionType(fileName, functionDecl.functionType.get)
 
                 val functionName = functionDecl.name.get.name.get
-                val methodFullName = namespaceStack.peek() match {
-                    case namespaceBlock: NewNamespaceBlock => namespaceBlock.fullName + "." + functionName
-                    case methodNode: NewMethod => methodNode.fullName + "." + functionName
-                    case _ => functionName
-                }
 
                 val methodNode_ = methodNode(
                     functionDecl, functionName,
-                    methodFullName, methodFullName, fileName
+                    functionDecl.fullName, functionDecl.signature, fileName
                 )
 
                 namespaceStack.push(methodNode_)
@@ -54,11 +52,18 @@ trait AstForDeclarationCreator(implicit schemaValidationMode: ValidationMode) { 
                 scope.popScope()
                 namespaceStack.pop()
 
+                val modifier = if (functionName.headOption.exists(_.isUpper)) {
+                    newModifierNode(ModifierTypes.PUBLIC)
+                } else {
+                    newModifierNode(ModifierTypes.PRIVATE)
+                }
+
                 methodAst(
                     methodNode_,
                     params.map(param => Ast(param)),
                     bodyAst.head,
-                    returnNode
+                    returnNode,
+                    Seq(modifier)
                 )
             }
             case None => {
@@ -67,7 +72,23 @@ trait AstForDeclarationCreator(implicit schemaValidationMode: ValidationMode) { 
             }
         }
     }
-    
+
+    private def astForReceiver(field: Field): Ast = {
+        val fieldName = if (field.names != null && field.names.nonEmpty) {
+            field.names.head.name.get
+        } else {
+            ""
+        }
+        val ast = NodeBuilders.newThisParameterNode(
+            fieldName,
+            field.code,
+            field.typeFullName,
+            evaluationStrategy = EvaluationStrategies.BY_REFERENCE
+        )
+        scope.addToScope(fieldName, (ast, field.typeFullName))
+        Ast(ast)
+    }
+
     private def astForGenericDeclaration(fileName: String, parentFullname: String, genericDeclaration: GenericDeclaration): Seq[Ast] = {
         val asts = ListBuffer[Ast]()
         genericDeclaration.specifications.map(specification => astForSpecification(
