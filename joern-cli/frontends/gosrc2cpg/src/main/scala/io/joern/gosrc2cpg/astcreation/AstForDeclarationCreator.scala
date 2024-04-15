@@ -37,12 +37,21 @@ trait AstForDeclarationCreator(implicit schemaValidationMode: ValidationMode) { 
             case Some(functionType) => {
                 val (params, returnNode) = generateNodeFromFunctionType(fileName, functionDecl.functionType.get)
 
+                returnNode.typeFullName(functionDecl.returnType)
+
                 val functionName = functionDecl.name.get.name.get
 
                 val methodNode_ = methodNode(
                     functionDecl, functionName,
                     functionDecl.fullName, functionDecl.signature, fileName
                 )
+
+                var receiverAst = Ast()
+                if (functionDecl.receiver.isDefined && functionDecl.receiver.get.fields.nonEmpty) {
+                    receiverAst = astForReceiver(
+                        functionDecl.receiver.get.fields.head
+                    )
+                }
 
                 namespaceStack.push(methodNode_)
                 scope.pushNewScope(methodNode_)
@@ -60,7 +69,7 @@ trait AstForDeclarationCreator(implicit schemaValidationMode: ValidationMode) { 
 
                 methodAst(
                     methodNode_,
-                    params.map(param => Ast(param)),
+                    Seq(receiverAst) ++ params.map(param => Ast(param)),
                     bodyAst.head,
                     returnNode,
                     Seq(modifier)
@@ -79,13 +88,21 @@ trait AstForDeclarationCreator(implicit schemaValidationMode: ValidationMode) { 
         } else {
             ""
         }
+        var typeFullName = ""
+        if (field.names.nonEmpty) {
+            typeFullName = field.names.head.typeFullName
+        }
+        var evaluationStrategy = EvaluationStrategies.BY_VALUE
+        if (typeFullName.startsWith("*")) {
+            evaluationStrategy = EvaluationStrategies.BY_REFERENCE
+        }
         val ast = NodeBuilders.newThisParameterNode(
             fieldName,
             field.code,
-            field.typeFullName,
-            evaluationStrategy = EvaluationStrategies.BY_REFERENCE
+            typeFullName,
+            evaluationStrategy = evaluationStrategy
         )
-        scope.addToScope(fieldName, (ast, field.typeFullName))
+        scope.addToScope(fieldName, (ast, typeFullName))
         Ast(ast)
     }
 

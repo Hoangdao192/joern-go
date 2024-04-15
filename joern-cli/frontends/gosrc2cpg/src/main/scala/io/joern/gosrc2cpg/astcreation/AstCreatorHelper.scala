@@ -46,7 +46,7 @@ trait AstCreatorHelper(implicit withSchemaValidation: ValidationMode) {
     def generateNodeFromFunctionType(fileName: String, functionType: FunctionType): (Seq[NewMethodParameterIn], NewMethodReturn) = {
         val functionTypeIdentifier = getFunctionReturnType(functionType)
         val returnNode = methodReturnNode(
-            functionTypeIdentifier, functionTypeIdentifier.name.get
+            functionTypeIdentifier, functionTypeIdentifier.typeFullName
         )
 
         val params = ListBuffer[NewMethodParameterIn]()

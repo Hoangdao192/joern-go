@@ -29,6 +29,7 @@ class FunctionDeclaration extends Declaration {
   var body: Option[BlockStatement] = None
   var fullName: String = ""
   var signature: String = ""
+  var returnType: String = ""
 }
 
 class GenericDeclaration extends Declaration {

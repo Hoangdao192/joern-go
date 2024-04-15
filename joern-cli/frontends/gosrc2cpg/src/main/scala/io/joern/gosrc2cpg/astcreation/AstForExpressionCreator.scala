@@ -277,6 +277,7 @@ trait AstForExpressionCreator(implicit validationMode: ValidationMode) {
             case Some(typeExpression) => compositeLiteral.typeExpression.get match {
                 case arrayType: ArrayType => astForArrayInitialization(fileName, compositeLiteral)
                 case identifier: Identifier => astForConstructor(fileName, compositeLiteral)
+                case selectorExpression: SelectorExpression => astForConstructor(fileName, compositeLiteral)
                 case expression => {
                     logger.warn(s"Unhandled type of composite literal ${expression.nodeType}")
                     Ast()
@@ -302,6 +303,7 @@ trait AstForExpressionCreator(implicit validationMode: ValidationMode) {
     private def astForConstructor(fileName: String, compositeLiteral: CompositeLiteral): Ast = {
         val callName = compositeLiteral.typeExpression.get match {
             case identifier: Identifier => identifier.name.get
+            case selectorExpression: SelectorExpression => selectorExpression.selector.get.typeFullName
             case x => {
                 logger.warn(s"Unhandled composite literal type ${x.getClass.toString}")
                 Defines.Unknown
@@ -313,7 +315,9 @@ trait AstForExpressionCreator(implicit validationMode: ValidationMode) {
             compositeLiteral.code,
             callName,
             callName + "." + Defines.ConstructorMethodName,
-            DispatchTypes.STATIC_DISPATCH
+            DispatchTypes.STATIC_DISPATCH,
+            Option(callName + "." + Defines.ConstructorMethodName),
+            Option(callName)
         )
         val arguments = compositeLiteral.elements.map(elt => astForExpression(fileName, elt)).toList
         callAst(

@@ -120,20 +120,25 @@ trait AstForSpecificationCreator(implicit schemaValidationMode: ValidationMode) 
                                  parentFullName: String,
                                  typeSpecification: TypeSpecification, 
                                  structType: StructType): Ast = {
-        val name = typeSpecification.name match {
+        val (name, fullname) = typeSpecification.name match {
             case Some(identifier) => identifier.name match {
-                case Some(name) => name
-                case None => "<unknown>"
+                case Some(name) => (name, identifier.typeFullName)
+                case None => ("<unknown>", "<unknown>")
             }
-            case None => "<unknown>"
+            case None => ("<unknown>", "<unknown>")
         }
-        val fullname = s"$parentFullName.$name"
         val fieldAsts = structType.fields match {
             case Some(fields) => astForFieldListNode(filename, fields)
             case None => Seq.empty
         }
 
-        val typeDecl = typeDeclNode(typeSpecification, name, s"$parentFullName.$name",
+        if (fullname.nonEmpty) {
+            usedPrimitiveTypes.add(fullname)
+        }
+
+        val typeDecl = typeDeclNode(
+            typeSpecification, name,
+            fullname,
             filename, typeSpecification.code
         )
         val modifierAst = if (name.headOption.exists(_.isUpper)) {
@@ -177,11 +182,17 @@ trait AstForSpecificationCreator(implicit schemaValidationMode: ValidationMode) 
         } else {
             newModifierNode(ModifierTypes.PRIVATE)
         }
-        
+
+        val blockNode_ = blockNode(
+            typeSpecification.name.get,
+            typeSpecification.name.get.code,
+            "void"
+        )
+
         methodAst(
             methodNode_,
             Seq(),
-            Ast(),
+            Ast(blockNode_),
             methodReturnNode(
                 structType, typeSpecification.fullName
             ),

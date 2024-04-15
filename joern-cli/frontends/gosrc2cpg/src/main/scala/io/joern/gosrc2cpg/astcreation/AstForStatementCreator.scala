@@ -194,9 +194,9 @@ trait AstForStatementCreator(implicit withSchemaValidation: ValidationMode) {
                                 val local = localNode(
                                     identifier, identifier.name.get,
                                     identifier.code,
-                                    typeFullName
+                                    identifier.typeFullName
                                 )
-                                scope.addToScope(identifier.name.get, (local, typeFullName))
+                                scope.addToScope(identifier.name.get, (local, identifier.typeFullName))
                                 asts.addOne(Ast(local))
 
                                 //  Treat assignment statement as a call node
