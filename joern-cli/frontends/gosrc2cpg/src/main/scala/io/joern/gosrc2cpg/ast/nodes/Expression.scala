@@ -149,6 +149,7 @@ class FunctionLiteral extends Expression {
 }
 
 class CompositeLiteral extends Expression {
+    @JsonProperty("type")
     var typeExpression: Option[Expression] = None
     var lbrace: Int = -1
     var rbrace: Int = -1

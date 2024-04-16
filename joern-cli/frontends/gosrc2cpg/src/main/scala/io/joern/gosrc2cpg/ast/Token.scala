@@ -57,6 +57,8 @@ object Token extends Enumeration {
   val ShlAssign = 31 // <<=
   val ShrAssign = 32 // >>=
 
+  val Inc = 37
+  val Dec = 38
 //  AND // &
 //  OR // |
 //  XOR // ^

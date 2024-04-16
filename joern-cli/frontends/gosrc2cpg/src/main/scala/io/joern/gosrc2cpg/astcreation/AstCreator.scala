@@ -17,6 +17,7 @@ import scala.language.postfixOps
 class AstCreator(rootNode: FileNode, filename: String, goModule: GoModule, protected var usedPrimitiveTypes: util.Set[String])(implicit val validationMode: ValidationMode)
     extends AstCreatorBase(filename)
         with AstCreatorHelper
+        with AstNodeBuilderHelper
         with AstForExpressionCreator
         with AstForStatementCreator
         with AstForDeclarationCreator

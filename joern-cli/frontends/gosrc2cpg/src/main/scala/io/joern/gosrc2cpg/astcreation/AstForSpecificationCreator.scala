@@ -3,6 +3,7 @@ package io.joern.gosrc2cpg.astcreation
 import io.joern.x2cpg.{Ast, Defines, ValidationMode}
 import io.joern.gosrc2cpg.ast.nodes.*
 import io.joern.x2cpg.utils.NodeBuilders.newModifierNode
+import io.shiftleft.codepropertygraph.generated.nodes.NewLocal
 import io.shiftleft.codepropertygraph.generated.{DispatchTypes, ModifierTypes, Operators}
 
 import scala.collection.mutable.ListBuffer
@@ -38,61 +39,46 @@ trait AstForSpecificationCreator(implicit schemaValidationMode: ValidationMode) 
     }
 
     private def astForValueSpecification(fileName: String, valueSpecification: ValueSpecification): Seq[Ast] = {
-        var asts = ListBuffer[Ast]()
+        val asts = ListBuffer[Ast]()
 
         val identifiers = valueSpecification.names.toArray
         val values = valueSpecification.values.toArray
 
         var index: Int = 0
+
         for (identifier <- identifiers) {
             if (values.length > index) {
-                var value = values(index)
-                if (value.isInstanceOf[FunctionLiteral]) {
-                    asts.addOne(
-                        astForExpression(fileName, value.asInstanceOf[FunctionLiteral])
-                    )
-                } else {
-                    val typeFullName = valueSpecification.typeExpression match {
-                        case Some(typeExpression) => getTypeFullNameFromExpression(typeExpression)
-                        case None => Defines.Unknown
-                    }
-                    //  TODO: Handle type
-                    val local = localNode(
-                        identifier, identifier.name.get,
-                        identifier.code,
-                        typeFullName
-                    )
-                    scope.addToScope(identifier.name.get, (local, typeFullName))
-                    asts.addOne(Ast(local))
-                    
-                    //  Treat assignment statement as a call node
-                    val call = callNode(
-                        value,
-                        value.code,
-                        Operators.assignment,
-                        Operators.assignment,
-                        DispatchTypes.STATIC_DISPATCH
-                    )
-                    val leftAst = astForExpression(fileName, identifier)
-                    val rightAst = astForExpression(fileName, value)
-                    asts.addOne(callAst(
-                        call, Seq(leftAst, rightAst)
-                    ))
-                }
+                val value = values(index)
+                value match
+                    case literal: FunctionLiteral =>
+                        asts.addOne(
+                            astForExpression(fileName, literal)
+                        )
+                    case _ =>
+                        usedPrimitiveTypes.add(identifier.typeFullName)
+                        val local: NewLocal = newLocalNode(identifier)
+                        scope.addToScope(identifier.name.get, (local, identifier.typeFullName))
+                        asts.addOne(Ast(local))
+
+                        //  Treat assignment statement as a call node
+                        val call = callNode(
+                            value,
+                            value.code,
+                            Operators.assignment,
+                            Operators.assignment,
+                            DispatchTypes.STATIC_DISPATCH
+                        )
+                        val leftAst = astForExpression(fileName, identifier)
+                        val rightAst = astForExpression(fileName, value)
+                        asts.addOne(callAst(
+                            call, Seq(leftAst, rightAst)
+                        ))
                 index += 1
             } else {
-                val typeFullName = valueSpecification.typeExpression match {
-                    case Some(typeExpression) => getTypeFullNameFromExpression(typeExpression)
-                    case None => Defines.Unknown
-                }
-                //  TODO: Handle type
-                val local = localNode(
-                    identifier, identifier.name.get,
-                    identifier.code,
-                    typeFullName
-                )
-                scope.addToScope(identifier.name.get, (local, typeFullName))
+                val local: NewLocal = newLocalNode(identifier)
+                scope.addToScope(identifier.name.get, (local, identifier.typeFullName))
                 asts.addOne(Ast(local))
+                asts.addOne(astForExpression(fileName, identifier))
             }
         }
 

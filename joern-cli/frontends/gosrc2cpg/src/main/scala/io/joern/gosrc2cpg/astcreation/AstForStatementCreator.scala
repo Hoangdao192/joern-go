@@ -1,5 +1,6 @@
 package io.joern.gosrc2cpg.astcreation
 
+import io.joern.gosrc2cpg.Constant
 import io.joern.gosrc2cpg.ast.Token
 import io.joern.x2cpg.{Ast, Defines, ValidationMode}
 import io.joern.gosrc2cpg.ast.nodes.*
@@ -27,8 +28,9 @@ trait AstForStatementCreator(implicit withSchemaValidation: ValidationMode) {
                 case Some(expression) => Seq(astForExpression(fileName, expression))
                 case None => Seq()
             }
+            case incDecStatement: IncrementDecrementStatement => Seq(astForIncDecStatement(fileName, incDecStatement))
             case unknown =>
-                logger.error(s"Unhandled expression node ${unknown.nodeType}")
+                logger.error(s"Unhandled statement node ${unknown.nodeType}")
                 Seq()
         }
     }
@@ -190,7 +192,8 @@ trait AstForStatementCreator(implicit withSchemaValidation: ValidationMode) {
                                     astForExpression(fileName, value.asInstanceOf[FunctionLiteral])
                                 )
                             } else {
-                                val typeFullName = getTypeFullNameFromExpression(value)
+//                                val typeFullName = getTypeFullNameFromExpression(value)
+                                usedPrimitiveTypes.add(identifier.typeFullName)
                                 val local = localNode(
                                     identifier, identifier.name.get,
                                     identifier.code,
@@ -237,6 +240,21 @@ trait AstForStatementCreator(implicit withSchemaValidation: ValidationMode) {
             )
         }
         asts.toSeq
+    }
+
+    private def astForIncDecStatement(fileName: String, incDecStatement: IncrementDecrementStatement): Ast = {
+        val operator = incDecStatement.token match {
+            case Token.Inc => Operators.postIncrement
+            case Token.Dec => Operators.postDecrement
+            case _ => Defines.Unknown
+        }
+        val cNode = callNode(incDecStatement, incDecStatement.code, operator, operator, DispatchTypes.STATIC_DISPATCH)
+        incDecStatement.expression match {
+            case Some(expression) => 
+                val argAst = astForExpression(fileName, expression)
+                callAst(cNode, Seq(argAst))
+            case None => Ast()
+        }
     }
 
 }
