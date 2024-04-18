@@ -18,6 +18,7 @@ trait AstForStatementCreator(implicit withSchemaValidation: ValidationMode) {
             case declarationStatement: DeclarationStatement => astForDeclarationStatement(fileName, declarationStatement)
             case ifStatement: IfStatement => Seq(astForIfStatement(fileName, ifStatement))
             case switchStatement: SwitchStatement => Seq(astForSwitchStatement(fileName, switchStatement))
+            case caseClause: CaseClause => astForCaseClause(fileName, caseClause)
             case typeSwitchStatement: TypeSwitchStatement => Seq(astForTypeSwitchStatement(fileName, typeSwitchStatement))
             case forStatement: ForStatement => Seq(astForForStatement(fileName, forStatement))
             case rangeStatement: RangeStatement => Seq(astForRangeStatement(fileName, rangeStatement))
@@ -35,14 +36,50 @@ trait AstForStatementCreator(implicit withSchemaValidation: ValidationMode) {
         }
     }
 
+    private def astForCaseClause(fileName: String, caseClause: CaseClause): Seq[Ast] = {
+        val conditionAsts = ListBuffer[Ast]()
+
+        if (caseClause.list.nonEmpty) {
+            caseClause.list.foreach(expr => {
+                val node = jumpTargetNode(
+                    caseClause, "case", expr.code
+                )
+                val jumpAst = Ast(node)
+                val exprAst = astForExpression(fileName, expr)
+                conditionAsts.addOne(jumpAst)
+                conditionAsts.addOne(exprAst)
+            })
+        } else {
+            val target = jumpTargetNode(caseClause, "default", "default")
+            conditionAsts.addOne(Ast(target))
+        }
+
+        val bodyAsts = ListBuffer[Ast]()
+        caseClause.body.foreach(statement => bodyAsts.addAll(astForStatement(fileName, statement)))
+
+        conditionAsts.toList ++: bodyAsts.toList
+    }
+
     private def astForIfStatement(fileName: String, ifStatement: IfStatement): Ast = {
-        val conditionAst = astForExpression(fileName, ifStatement.condition.get)
+        val initAst = ifStatement.initialization match {
+            case Some(statement: Statement) => astForStatement(fileName, statement)
+            case None => Seq[Ast]()
+        }
+
+        initAst.foreach(ast => {
+            ast.nodes.foreach(node => scope.pushNewScope(node))
+        })
+
+        val conditionAst = ifStatement.condition match {
+            case Some(condition) => astForExpression(fileName, condition)
+            case None => Ast()
+        }
         val ifNode = controlStructureNode(
             ifStatement, ControlStructureTypes.IF, ifStatement.code
         )
 
         val bodyAst = ifStatement.body match {
-            case Some(body) => astForBlockStatement(fileName, ifStatement.body.get)
+            case Some(body) => astForBlockStatement(fileName, body)
             case None => Ast()
         }
         val elseAst = ifStatement.elseStatement match {
@@ -68,22 +105,34 @@ trait AstForStatementCreator(implicit withSchemaValidation: ValidationMode) {
             case None => Ast()
         }
 
-        Ast(ifNode)
-            .withChildren(Seq(conditionAst, bodyAst, elseAst))
-            .withConditionEdge(ifNode, conditionAst.root.get)
+        if (initAst != null) {
+            initAst.foreach(ast => {
+                ast.nodes.foreach(node => scope.popScope())
+            })
+        }
+
+        controlStructureAst(
+            ifNode, Some(conditionAst), Seq(bodyAst, elseAst) ++ initAst
+        )
     }
 
     private def astForSwitchStatement(fileName: String, switchStatement: SwitchStatement): Ast = {
-        val conditionAst = astForExpression(fileName: String, switchStatement.tag.get)
+        val conditionAst = switchStatement.tag match {
+            case Some(tag) => astForExpression(fileName: String, tag)
+            case None => Ast()
+        }
 
         val switchNode = NewControlStructure()
             .controlStructureType(ControlStructureTypes.SWITCH)
             .code(conditionAst.toString)
 
-        val switchBodyAst = astForStatement(fileName, switchStatement.body.get)
-        Ast(switchNode)
-            .withChildren(Seq(conditionAst, switchBodyAst.head))
-            .withConditionEdge(switchNode, conditionAst.root.get)
+        val switchBodyAst = switchStatement.body match {
+            case Some(blockStatement) => astForStatement(fileName, blockStatement)
+            case None => Seq.empty
+        }
+        controlStructureAst(
+            switchNode, Option(conditionAst), switchBodyAst
+        )
     }
 
     private def astForTypeSwitchStatement(fileName: String, typeSwitchStatement: TypeSwitchStatement): Ast = {
@@ -102,20 +151,101 @@ trait AstForStatementCreator(implicit withSchemaValidation: ValidationMode) {
 
     private def astForForStatement(fileName: String, forStatement: ForStatement): Ast = {
         scope.pushNewScope(blockNode(forStatement, "", ""))
-        val initAst = astForStatement(fileName, forStatement.initialization.get)
+        val initAst = forStatement.initialization match {
+            case Some(statement) => astForStatement(fileName, forStatement.initialization.get)
+            case None => Seq.empty
+        }
         scope.popScope()
-        val conditionAst = astForExpression(fileName, forStatement.condition.get)
-        val updateAst = astForStatement(fileName, forStatement.post.get)
-        val bodyAst = astForStatement(fileName, forStatement.body.get)
+        val conditionAst = forStatement.condition match {
+            case Some(condition) => astForExpression(fileName, condition)
+            case None => Ast()
+        }
+        val updateAsts = forStatement.post match {
+            case Some(statement) => astForStatement(fileName, statement)
+            case None => Seq.empty
+        }
+        val bodyAsts = forStatement.body match {
+            case Some(blockStatement) => astForStatement(fileName, forStatement.body.get)
+            case None => Seq.empty
+        }
 
         //  TODO: Handle for loop code
         val forNode = NewControlStructure()
             .controlStructureType(ControlStructureTypes.FOR)
             .code(forStatement.code)
-        forAst(forNode, Seq(), initAst, Seq(conditionAst), updateAst, bodyAst.head)
+        forAst(forNode, Seq(), initAst, Seq(conditionAst), updateAsts, bodyAsts)
     }
 
     private def astForRangeStatement(fileName: String, rangeStatement: RangeStatement): Ast = {
+        if (rangeStatement.key.isDefined && rangeStatement.value.isDefined) {
+            val keyName = rangeStatement.key match {
+                case Some(key) => key match {
+                    case identifier: Identifier => identifier.name.getOrElse("")
+                    case other =>
+                        logger.warn(s"Unhandled expression when parse range statement ${other.getClass.getTypeName}")
+                        ""
+                }
+                case None => ""
+            }
+            val valueName = rangeStatement.value match {
+                case Some(value) => value match {
+                    case identifier: Identifier => identifier.name.getOrElse("")
+                    case other =>
+                        logger.warn(s"Unhandled expression when parse range statement ${other.getClass.getTypeName}")
+                        ""
+                }
+                case None => ""
+            }
+            if (keyName.nonEmpty && valueName.nonEmpty) {
+                val pattern = s"for${keyName},${valueName}:="
+                val forNode = controlStructureNode(rangeStatement, ControlStructureTypes.FOR, rangeStatement.code)
+                scope.pushNewScope(forNode)
+                val declAst = ListBuffer[Ast]()
+                if (rangeStatement.code.replace(" ", "").startsWith(pattern)) {
+                    if (!keyName.equals("_") && rangeStatement.key.get.isInstanceOf[Identifier]) {
+                        val identifier = rangeStatement.key.get.asInstanceOf[Identifier]
+                        val local = newLocalNode(identifier)
+                        scope.addToScope(keyName, (local, identifier.typeFullName))
+                        declAst.addOne(Ast(local))
+                    }
+                    if (!valueName.equals("_") && rangeStatement.value.get.isInstanceOf[Identifier]) {
+                        val identifier = rangeStatement.value.get.asInstanceOf[Identifier]
+                        val local = newLocalNode(identifier)
+                        scope.addToScope(valueName, (local, identifier.typeFullName))
+                        declAst.addOne(Ast(local))
+                    }
+                }
+                val keyIdentAst = keyName.equals("_") match {
+                    case false => astForExpression(fileName, rangeStatement.key.get)
+                    case true => Ast()
+                }
+                val valueIdentAst = valueName.equals("_") match {
+                    case false => astForExpression(fileName, rangeStatement.value.get)
+                    case true => Ast()
+                }
+                val initAst = rangeStatement.expression match {
+                    case Some(expression) => astForExpression(fileName, expression)
+                    case None => Ast()
+                }
+                val bodyAsts = rangeStatement.body match {
+                    case Some(body) => astForStatement (fileName, body)
+                    case None => Seq.empty
+                }
+                scope.popScope()
+                return controlStructureAst(forNode, None, initAst +: bodyAsts)
+            }
+        } else {
+            val initAst = rangeStatement.expression match {
+                case Some(expression) => astForExpression(fileName, expression)
+                case None => Ast()
+            }
+            val forNode = controlStructureNode(rangeStatement, ControlStructureTypes.FOR, rangeStatement.code)
+            val bodyAsts = rangeStatement.body match {
+                case Some(body) => astForStatement (fileName, body)
+                case None => Seq.empty
+            }
+            return controlStructureAst(forNode, None, initAst +: bodyAsts)
+        }
         Ast()
     }
 
@@ -229,7 +359,13 @@ trait AstForStatementCreator(implicit withSchemaValidation: ValidationMode) {
             val rightExprAst = assignmentStatement.rhs.map(expr => astForExpression(
                 fileName, expr
             ))
-            val typeFullName = getTypeFullNameFromExpression(assignmentStatement.rhs.head)
+            val typeFullName = assignmentStatement.lhs.headOption match {
+                case Some(head) => head match {
+                    case identifier: Identifier => identifier.typeFullName
+                    case _ => ""
+                }
+                case None => ""
+            }
             val call = callNode(
                 assignmentStatement, assignmentStatement.code,
                 operator, operator, DispatchTypes.STATIC_DISPATCH,

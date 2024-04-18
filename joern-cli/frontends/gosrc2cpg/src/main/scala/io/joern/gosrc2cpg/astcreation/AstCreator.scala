@@ -111,20 +111,31 @@ class AstCreator(rootNode: FileNode, filename: String, goModule: GoModule, prote
                 ("\\", goModule.moduleName)
         }
         
+        var ast: Ast = Ast()
         var namespaceBlock = if (namespaceMap.containsKey(fullname)) {
+            ast = Ast(namespaceMap.get(fullname))
             namespaceMap.get(fullname)
         } else {
             val parentPath = Paths.get(goModule.modulePath);
             val childPath = Paths.get(filename)
-            NewNamespaceBlock()
+            val typeDecl = typeDeclNode(
+                packageIdentifier.getOrElse(null),
+                name, fullname, filename, packageIdentifier match {
+                    case Some(ident) => ident.code
+                    case None => ""
+                }
+            )
+            var block = NewNamespaceBlock()
                 .name(name)
                 .fullName(fullname)
                 .filename(parentPath.relativize(childPath).toString)
+            ast = Ast(block).withChild(Ast(typeDecl))
+            block
         }
         namespaceMap.put(
             fullname, namespaceBlock
         )
-        (fullname, namespaceBlock, Ast(namespaceBlock))
+        (fullname, namespaceBlock, ast)
     }
 
     def astForFieldListNode(filename: String, fieldList: FieldList): Seq[Ast] = {
@@ -141,10 +152,7 @@ class AstCreator(rootNode: FileNode, filename: String, goModule: GoModule, prote
                 case Some(identifierName) => identifierName
                 case None => Defines.Unknown
             }
-            val typeName = field.typeExpression match {
-                case Some(typeExpression) => getTypeFullNameFromExpression(typeExpression)
-                case None => Defines.Unknown
-            }
+            val typeName = identifier.typeFullName
             val member = memberNode(
                 field, name, field.code, typeName
             )

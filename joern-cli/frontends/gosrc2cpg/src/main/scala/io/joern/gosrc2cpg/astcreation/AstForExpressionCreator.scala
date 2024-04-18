@@ -4,8 +4,9 @@ import dotty.tools.dotc.ast.Trees.Ident
 import io.joern.gosrc2cpg.Constant.PrimitiveTypes
 import io.joern.gosrc2cpg.ast.Token
 import io.joern.x2cpg.{Ast, Defines, ValidationMode}
-import io.joern.gosrc2cpg.ast.nodes.{Identifier, SelectorExpression, *}
-import io.shiftleft.codepropertygraph.generated.{DispatchTypes, Operators, PropertyNames}
+import io.joern.gosrc2cpg.ast.nodes.{Identifier, MapType, SelectorExpression, *}
+import io.shiftleft.codepropertygraph.generated.{DispatchTypes, NodeTypes, Operators, PropertyNames}
+import io.joern.x2cpg.utils.NodeBuilders.{newFieldIdentifierNode, newIdentifierNode, newOperatorCallNode}
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
@@ -47,10 +48,70 @@ trait AstForExpressionCreator(implicit validationMode: ValidationMode) {
             case identifier: Identifier => astForIdentifier(
                 fileName, identifier
             )
+            case parenthesizedExpression: ParenthesizedExpression =>
+                parenthesizedExpression.expression match {
+                    case Some(expr) => astForExpression(fileName, expr)
+                    case None => Ast()
+                }
+            case selectorExpression: SelectorExpression => astForSelectorExpression(
+                fileName, selectorExpression
+            )
+            case keyValueExpression: KeyValueExpression  => astForExpression(
+                fileName, keyValueExpression.value.get
+            )
+            case arrayType: ArrayType => astForArrayType(fileName, arrayType)
+//            case ellipsisExpression: EllipsisExpression
             case unknown =>
-                logger.error(s"Unhandled expression node ${unknown.nodeType}")
+                logger.error(s"Unhandled expression node ${unknown.nodeType} on file ${fileName}")
+                logger.error(unknown.code)
                 Ast()
         }
+    }
+
+    private def astForArrayType(fileName: String, arrayType: ArrayType): Ast = {
+//        val typeFullName = "[]" + arrayType.element match {
+//            case Some(element) => element match {
+//                case identifier: Identifier => identifier.typeFullName
+//                case arrType: ArrayType => {
+//                    val typeAst = astForArrayType(fileName, arrType)
+//                    typeAst.root match {
+//                        case Some(node) => node.properties.getOrElse(PropertyNames.TYPE_FULL_NAME, "<unknown>")
+//                        case None => "<unknown>"
+//                    }
+//                }
+//                case structType: StructType => structType.
+//            }
+//        }
+        Ast(newIdentifierNode(arrayType.code, arrayType.code))
+    }
+
+    private def astForSelectorExpression(fileName: String, selectorExpression: SelectorExpression): Ast = {
+        val typeFullName = selectorExpression.selector match {
+            case Some(selector) => selector.typeFullName
+            case None => ""
+        }
+        val (identifierAst, fieldTypeFullName) = selectorExpression.expression match {
+            case Some(expression) => expression match {
+                case identifier: Identifier => (astForExpression(fileName, identifier), typeFullName)
+                case _ => (astForExpression(fileName, expression), typeFullName)
+            }
+            case None => (Ast(), "")
+        }
+        val fieldName = selectorExpression.selector match {
+            case Some(selector) => selector.name match {
+                case Some(name) => name
+                case None => ""
+            }
+            case None => ""
+        }
+        val callNode = newOperatorCallNode(
+            Operators.fieldAccess,
+            selectorExpression.code,
+            Some(fieldTypeFullName)
+        )
+        val fieldIdentifierNode = newFieldIdentifierNode(fieldName)
+
+        callAst(callNode, Seq(identifierAst, Ast(fieldIdentifierNode)))
     }
 
     //  Example: array[0]
@@ -80,8 +141,14 @@ trait AstForExpressionCreator(implicit validationMode: ValidationMode) {
             DispatchTypes.STATIC_DISPATCH
         )
 
-        val expression = astForExpression(fileName, typeAssertExpression.expression.get)
-        val argumentType = astForExpression(fileName, typeAssertExpression.typeExpression.get)
+        val expression = typeAssertExpression.expression match {
+            case Some(expr) => astForExpression(fileName, expr)
+            case None => Ast()
+        }
+        val argumentType = typeAssertExpression.typeExpression match {
+            case Some(expr) => astForExpression (fileName, expr)
+            case None => Ast()
+        }
 
         callAst(call, Seq(expression, argumentType))
     }
@@ -137,27 +204,41 @@ trait AstForExpressionCreator(implicit validationMode: ValidationMode) {
         }
 
         val call = callNode(
-            binaryExpression, binaryExpression.toString, operator, operator, DispatchTypes.STATIC_DISPATCH, None, None
+            binaryExpression, binaryExpression.code, operator, operator, DispatchTypes.STATIC_DISPATCH,
+            None, None
         )
 
         callAst(call, Seq(leftExpressionAst, rightExpressionAst))
     }
 
     private def astForFunctionLiteral(fileName: String, functionLiteral: FunctionLiteral): Ast = {
+        val fullname = nextClosureName()
+
         val method = methodNode(
-            functionLiteral, "", functionLiteral.code,
-            "", None, fileName
+            functionLiteral, fullname, functionLiteral.code,
+            fullname, Option(fullname), fileName
         )
+        scope.pushNewScope(method)
         val (parameters, returnNode) = generateNodeFromFunctionType(
             fileName, functionLiteral.functionType.get
         )
         val bodyAst = astForStatement(fileName, functionLiteral.body.get)
-        methodAst(
+        val methodAst_ = methodAst(
             method,
             parameters.map(parameter => Ast(parameter)),
             bodyAst.head,
             returnNode
         )
+        scope.popScope()
+        val funcDecl = typeDeclNode(functionLiteral,
+            fullname, fullname, fileName, functionLiteral.code
+        )
+        Ast.storeInDiffGraph(Ast(funcDecl), diffGraph)
+        // Setting Lambda TypeDecl as its parent.
+        method.astParentType(NodeTypes.TYPE_DECL)
+        method.astParentFullName(fullname)
+        Ast.storeInDiffGraph(methodAst_, diffGraph)
+        Ast(methodRefNode(functionLiteral, functionLiteral.code, fullname, fullname))
     }
 
     private def astForCallExpression(fileName: String, callExpression: CallExpression): Ast = {
@@ -173,7 +254,15 @@ trait AstForExpressionCreator(implicit validationMode: ValidationMode) {
             Some(signature),
             Some(typeFullName)
         )
-        callAst(cpgCall, Seq(), receiverAst.headOption)
+
+        val args = callExpression.args.map(arg => {
+            arg match {
+                case mapType: MapType => Ast(literalNode(arg, arg.code, "map"))
+                case chanelType: ChanelType => Ast(literalNode(arg, arg.code, "chanel"))
+                case _ => astForExpression(fileName, arg)
+            }
+        })
+        callAst(cpgCall, args.toSeq, receiverAst.headOption)
     }
 
     private def preReqForCallNode(fileName: String, function: Expression, callExpression: CallExpression): (String, String, String, String, Seq[Ast]) = {
@@ -221,16 +310,38 @@ trait AstForExpressionCreator(implicit validationMode: ValidationMode) {
                         )
 //                        processReceiverAst(fileName, selectorExpression.selector.get.name.get, xNode)
                 }
+            case parenthesizedExpression: ParenthesizedExpression =>
+                parenthesizedExpression.expression match {
+                    case Some(expr) => expr match {
+                        case identifier: Identifier =>
+                            (
+                                Operators.cast,
+                                Operators.cast,
+                                Operators.cast,
+                                identifier.typeFullName,
+                                Seq()
+                            )
+                        case _ => ("", "", "" , "", Seq())
+                    }
+                    case None => ("", "", "" , "", Seq())
+                }
+            case arrayType: ArrayType =>
+                (
+                    arrayType.code + "()",
+                    arrayType.code + "()",
+                    arrayType.code + "()",
+                    arrayType.code,
+                    Seq()
+                )
             case x =>
+                logger.warn(callExpression.code)
                 logger.warn(s"Unhandled class ${x.getClass}")
                 ("", "", "" , "", Seq())
     }
 
 
-    private def processReceiverAst(fileName: String,
-                                   methodName: String,
-                                   expression: Expression
-                                  ): (String, String, String, String, Seq[Ast]) = {
+    private def processReceiverAst(fileName: String, methodName: String, expression: Expression)
+    : (String, String, String, String, Seq[Ast]) = {
         val receiverAst = astForExpression(fileName, expression)
         val receiverTypeFullName = receiverAst.root.get.properties(PropertyNames.TYPE_FULL_NAME).toString
         val callMethodFullName: String = s"$receiverTypeFullName.$methodName"
@@ -371,7 +482,15 @@ trait AstForExpressionCreator(implicit validationMode: ValidationMode) {
                                 typeFullname
                             )
                             Ast(identNode).withRefEdge(identNode, localNode)
-                        case None => Ast()
+                        case None =>
+                            if (identifier.typeFullName != "") {
+                                Ast(newIdentifierNode(
+                                    identifier.name.getOrElse(""),
+                                    identifier.typeFullName
+                                ))
+                            } else {
+                                Ast()
+                            }
                     }
                 } else {
                     Ast()
@@ -390,4 +509,5 @@ trait AstForExpressionCreator(implicit validationMode: ValidationMode) {
         //            Ast()
         //        }
     }
+
 }

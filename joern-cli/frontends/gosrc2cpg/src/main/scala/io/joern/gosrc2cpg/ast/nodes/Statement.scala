@@ -1,6 +1,6 @@
 package io.joern.gosrc2cpg.ast.nodes
 
-import com.fasterxml.jackson.annotation.{JsonProperty, JsonSubTypes, JsonTypeInfo}
+import com.fasterxml.jackson.annotation.{JsonProperty, JsonSetter, JsonSubTypes, JsonTypeInfo, Nulls}
 
 import scala.collection.mutable.ListBuffer
 
@@ -28,9 +28,20 @@ import scala.collection.mutable.ListBuffer
     new JsonSubTypes.Type(value = classOf[SelectStatement], name = "SelectStatement"),
     new JsonSubTypes.Type(value = classOf[SendStatement], name = "SendStatement"),
     new JsonSubTypes.Type(value = classOf[SwitchStatement], name = "SwitchStatement"),
-    new JsonSubTypes.Type(value = classOf[TypeSwitchStatement], name = "TypeSwitchStatement")
+    new JsonSubTypes.Type(value = classOf[TypeSwitchStatement], name = "TypeSwitchStatement"),
+    new JsonSubTypes.Type(value = classOf[CaseClause], name = "CaseClause"),
+    new JsonSubTypes.Type(value = classOf[CommClause], name = "CommClause")
 ))
 abstract class Statement extends Node
+
+class CaseClause extends Statement {
+    var casePosition: Int = 0
+    @JsonSetter(nulls = Nulls.SKIP)
+    var list: ListBuffer[Expression] = new ListBuffer()
+    var colon: Int = 0
+    @JsonSetter(nulls = Nulls.SKIP)
+    var body: ListBuffer[Statement] = new ListBuffer()
+}
 
 class AssignStatement extends Statement {
     var lhs: ListBuffer[Expression] = new ListBuffer()
@@ -128,6 +139,15 @@ class ReturnStatement extends Statement {
 class SelectStatement extends Statement {
     var select: Int = 0
     var body: Option[BlockStatement] = None
+}
+
+class CommClause extends Statement {
+    @JsonProperty("case")
+    var casePosition: Int = 0
+    var comm: Option[Statement] = None
+    var colon: Int = 0
+    @JsonSetter(nulls = Nulls.SKIP)
+    var body: ListBuffer[Statement] = ListBuffer()
 }
 
 class SendStatement extends Statement {

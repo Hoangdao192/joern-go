@@ -18,7 +18,7 @@ trait AstForSpecificationCreator(implicit schemaValidationMode: ValidationMode) 
             case valueSpecification: ValueSpecification => astForValueSpecification(fileName, valueSpecification)
             case typeSpecification: TypeSpecification => astForTypeSpecification(fileName, parentFullName, typeSpecification)
             case unknown =>
-                logger.error(s"Unhandled expression node ${unknown.nodeType}")
+                logger.error(s"Unhandled specification node ${unknown.nodeType}")
                 Seq()
         }
     }
@@ -94,8 +94,77 @@ trait AstForSpecificationCreator(implicit schemaValidationMode: ValidationMode) 
                 case structType: StructType => Seq(astForStructType(
                     filename, parentFullName, typeSpecification, structType
                 ))
+                case identifier: Identifier =>
+                    usedPrimitiveTypes.add(typeSpecification.name.get.typeFullName)
+                    val typeDecl = typeDeclNode(
+                        typeSpecification,
+                        typeSpecification.name.get.name.get,
+                        typeSpecification.name.get.typeFullName,
+                        filename,
+                        typeSpecification.code
+                    )
+                    val modifier = typeSpecification.name.get.name.get.exists(_.isUpper) match {
+                        case true => ModifierTypes.PUBLIC
+                        case false => ModifierTypes.PRIVATE
+                    }
+                    Seq(
+                        Ast(typeDecl)
+                        .withChild(Ast(newModifierNode(modifier)))
+                    )
+                case interfaceType: InterfaceType =>
+                    usedPrimitiveTypes.add(typeSpecification.name.get.typeFullName)
+                    val typeDecl = typeDeclNode(
+                        typeSpecification,
+                        typeSpecification.name.get.name.get,
+                        typeSpecification.name.get.typeFullName,
+                        filename,
+                        typeSpecification.code
+                    )
+                    val modifier = typeSpecification.name.get.name.get.exists(_.isUpper) match {
+                        case true => ModifierTypes.PUBLIC
+                        case false => ModifierTypes.PRIVATE
+                    }
+                    Seq(
+                        Ast(typeDecl)
+                            .withChild(Ast(newModifierNode(modifier)))
+                    )
+                case functionType: FunctionType =>
+                    usedPrimitiveTypes.add(typeSpecification.name.get.typeFullName)
+                    val typeDecl = typeDeclNode(
+                        typeSpecification,
+                        typeSpecification.name.get.name.get,
+                        typeSpecification.name.get.typeFullName,
+                        filename,
+                        typeSpecification.code
+                    )
+                    val modifier = typeSpecification.name.get.name.get.exists(_.isUpper) match {
+                        case true => ModifierTypes.PUBLIC
+                        case false => ModifierTypes.PRIVATE
+                    }
+                    Seq(
+                        Ast(typeDecl)
+                            .withChild(Ast(newModifierNode(modifier)))
+                    )
+                case selectorExpression: SelectorExpression =>
+                    usedPrimitiveTypes.add(typeSpecification.name.get.typeFullName)
+                    val typeDecl = typeDeclNode(
+                        typeSpecification,
+                        typeSpecification.name.get.name.get,
+                        typeSpecification.name.get.typeFullName,
+                        filename,
+                        typeSpecification.code
+                    )
+                    val modifier = typeSpecification.name.get.name.get.exists(_.isUpper) match {
+                        case true => ModifierTypes.PUBLIC
+                        case false => ModifierTypes.PRIVATE
+                    }
+                    Seq(
+                        Ast(typeDecl)
+                            .withChild(Ast(newModifierNode(modifier)))
+                    )
                 case _ =>
-                    logger.warn("Unhandled type expression when parse type spec")
+                    logger.warn(s"Unhandled type expression when parse type spec ${typeExpression.nodeType}")
+                    logger.warn(typeExpression.code)
                     Seq.empty
             }
             case None => Seq.empty

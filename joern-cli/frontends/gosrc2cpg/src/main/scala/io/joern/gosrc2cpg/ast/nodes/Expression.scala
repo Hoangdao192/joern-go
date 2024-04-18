@@ -16,7 +16,7 @@ import scala.collection.mutable.ListBuffer
     new JsonSubTypes.Type(value = classOf[BadExpression], name = "BadExpression"),
     new JsonSubTypes.Type(value = classOf[BasicLiteralExpression], name = "BasicLiteral"),
     new JsonSubTypes.Type(value = classOf[BinaryExpression], name = "BinaryExpression"),
-    new JsonSubTypes.Type(value = classOf[EllipsisExpression], name = "EllipsisExpression"),
+    new JsonSubTypes.Type(value = classOf[EllipsisExpression], name = "Ellipsis"),
     new JsonSubTypes.Type(value = classOf[IndexExpression], name = "IndexExpression"),
     new JsonSubTypes.Type(value = classOf[IndexListExpression], name = "IndexListExpression"),
     new JsonSubTypes.Type(value = classOf[KeyValueExpression], name = "KeyValueExpression"),
@@ -71,6 +71,7 @@ class BinaryExpression extends Expression {
     var leftExpression: Option[Expression] = None
     var rightExpression: Option[Expression] = None
     var operatorPosition: Int = 0
+    @JsonProperty("op")
     var operator: Int = 0
 }
 
@@ -131,6 +132,7 @@ class StarExpression extends Expression {
 
 class TypeAssertExpression extends Expression {
     var expression: Option[Expression] = None
+    @JsonProperty("type")
     var typeExpression: Option[Expression] = None
     var lparen: Int = 0
     var rparen: Int = 0

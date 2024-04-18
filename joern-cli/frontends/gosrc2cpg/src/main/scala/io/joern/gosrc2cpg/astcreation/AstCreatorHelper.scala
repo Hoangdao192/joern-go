@@ -55,20 +55,14 @@ trait AstCreatorHelper(implicit withSchemaValidation: ValidationMode) {
             case Some(paramFieldList) => {
                 var index = 1
                 for (field <- paramFieldList.fields) {
-                    val parameterType = astForExpression(fileName, field.typeExpression.get)
+//                    val parameterType = astForExpression(fileName, field.typeExpression.get)
                     for (fieldIdentifier <- field.names) {
                         val parameterName = fieldIdentifier.name.get
-                        val parameterTypeName = field.typeExpression match {
-                            case Some(typeExpression) => getTypeFullNameFromExpression(typeExpression)
-                            case None =>
-                                logger.warn("Field not have type expression")
-                                Defines.Unknown
-                        }
-                        val code = s"$parameterName $parameterTypeName"
+                        val code = s"$parameterName ${fieldIdentifier.typeFullName}"
                         val parameterNodeIn = parameterInNode(
                             field, fieldIdentifier.name.get, code,
                             index, true, EvaluationStrategies.BY_VALUE,
-                            parameterTypeName
+                            fieldIdentifier.typeFullName
                         )
                         index += 1
                         params.addOne(parameterNodeIn)
@@ -97,16 +91,17 @@ trait AstCreatorHelper(implicit withSchemaValidation: ValidationMode) {
                 val typeName = fields.map(field => {
                     val expression = field.typeExpression.get
                     expression match {
-                        case identifier: Identifier =>
-                            identifier.name match {
-                                case Some(name) =>
-                                    if (Constant.PRIMITIVE_TYPES.contains(name)) {
-                                        usedPrimitiveTypes.add(name)
-                                    }
-                                    name
-                                case None => Defines.Unknown
+                        case identifier: Identifier => identifier.typeFullName
+                        case starExpression: StarExpression => starExpression.expression match {
+                            case Some(expr) => expr match {
+                                case identifier: Identifier => identifier.typeFullName
+                                case _ => logger.warn("[getFunctionReturnType] Unhandled type expression " + expr.getClass.getTypeName)
                             }
+                            case None => ""
+                        }
+                        case interfaceType: InterfaceType => "interface{}"
                         case _ =>
+                            println(functionType.code)
                             println("[getFunctionReturnType] Not handled type expression " + expression.getClass.getTypeName)
                             ""
                     }
