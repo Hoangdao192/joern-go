@@ -286,8 +286,10 @@ class CfgCreator(entryNode: Method, diffGraph: DiffGraphBuilder) {
   /** Same construction recipe as for the AND expression, just that the fringe edge type of the left CFG is `FalseEdge`.
     */
   protected def cfgForOrExpression(call: Call): Cfg = {
-    val leftCfg    = cfgFor(call.argument(1))
-    val rightCfg   = cfgFor(call.argument(2))
+    try {
+      val leftCfg = cfgFor(call.argument(1))
+      val rightCfg = cfgFor(call.argument(2))
+
     val diffGraphs = edgesFromFringeTo(leftCfg, rightCfg.entryNode, FalseEdge) ++ leftCfg.edges ++ rightCfg.edges
     Cfg
       .from(leftCfg, rightCfg)
@@ -296,6 +298,13 @@ class CfgCreator(entryNode: Method, diffGraph: DiffGraphBuilder) {
         edges = diffGraphs,
         fringe = leftCfg.fringe ++ rightCfg.fringe
       ) ++ cfgForSingleNode(call)
+    } catch {
+      case e: NoSuchElementException =>
+        println(s"Exception ${e.getMessage}")
+        println(s"At ${call.code}")
+        e.printStackTrace()
+        Cfg.empty
+    }
   }
 
   /** A conditional expression is of the form `condition ? trueExpr ; falseExpr` where both `trueExpr` and `falseExpr`

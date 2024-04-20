@@ -10,7 +10,6 @@ class TypeResolverPass(cpg: Cpg, usedTypes: Array[String]) extends CpgPass(cpg) 
     
     override def run(diffGraph: DiffGraphBuilder): Unit = {
         usedTypes.foreach { typeName =>
-            println(typeName)
             var shortName = typeName
             if (shortName.contains(".")) {
                 val segments: Array[String] = shortName.split("\\.")

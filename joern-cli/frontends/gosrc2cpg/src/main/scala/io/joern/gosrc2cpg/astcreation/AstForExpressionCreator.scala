@@ -60,12 +60,40 @@ trait AstForExpressionCreator(implicit validationMode: ValidationMode) {
                 fileName, keyValueExpression.value.get
             )
             case arrayType: ArrayType => astForArrayType(fileName, arrayType)
+            case sliceExpression: SliceExpression => astForSliceExpression(fileName, sliceExpression)
 //            case ellipsisExpression: EllipsisExpression
             case unknown =>
                 logger.error(s"Unhandled expression node ${unknown.nodeType} on file ${fileName}")
                 logger.error(unknown.code)
                 Ast()
         }
+    }
+
+    private def astForSliceExpression(fileName: String, sliceExpression: SliceExpression): Ast = {
+        val expressionAst = sliceExpression.expression match {
+            case Some(expression) => astForExpression(fileName, expression)
+            case None => Ast()
+        }
+        val lowAst = sliceExpression.low match {
+            case Some(low) => astForExpression(fileName, low)
+            case None => Ast()
+        }
+        val highAst = sliceExpression.high match {
+            case Some(high) => astForExpression(fileName, high)
+            case None => Ast()
+        }
+        val maxAst = sliceExpression.max match {
+            case Some(max) => astForExpression(fileName, max)
+            case None => Ast()
+        }
+        val operator = "<operator>.slice"
+
+        val call = callNode(
+            sliceExpression, sliceExpression.code, operator, operator, DispatchTypes.STATIC_DISPATCH,
+            None, None
+        )
+
+        callAst(call, Seq(expressionAst, lowAst, highAst, maxAst))
     }
 
     private def astForArrayType(fileName: String, arrayType: ArrayType): Ast = {
@@ -137,7 +165,7 @@ trait AstForExpressionCreator(implicit validationMode: ValidationMode) {
 
     private def astForTypeAssertExpression(fileName: String, typeAssertExpression: TypeAssertExpression): Ast = {
         val call = callNode(
-            typeAssertExpression, typeAssertExpression.code, Operators.cast, Operators.cast,
+            typeAssertExpression, typeAssertExpression.code, Operators.is, Operators.is,
             DispatchTypes.STATIC_DISPATCH
         )
 
@@ -179,6 +207,10 @@ trait AstForExpressionCreator(implicit validationMode: ValidationMode) {
     }
 
     private def astForBinaryExpression(fileName: String, binaryExpression: BinaryExpression): Ast = {
+        if (binaryExpression.code.equals("len(any.TypeUrl) == len(name) || any.TypeUrl[len(any.TypeUrl)-len(name)-1] == '/'")) {
+            println("Breakpoint")
+        }
+
         val leftExpressionAst = astForExpression(fileName, binaryExpression.leftExpression.get)
         val rightExpressionAst = astForExpression(fileName, binaryExpression.rightExpression.get)
         val operator = binaryExpression.operator match {
@@ -207,6 +239,10 @@ trait AstForExpressionCreator(implicit validationMode: ValidationMode) {
             binaryExpression, binaryExpression.code, operator, operator, DispatchTypes.STATIC_DISPATCH,
             None, None
         )
+
+        if (leftExpressionAst.equals(Ast()) || rightExpressionAst.equals(Ast())) {
+            logger.error(s"Empty arguments ${binaryExpression.code}")
+        }
 
         callAst(call, Seq(leftExpressionAst, rightExpressionAst))
     }
@@ -262,6 +298,9 @@ trait AstForExpressionCreator(implicit validationMode: ValidationMode) {
                 case _ => astForExpression(fileName, arg)
             }
         })
+//        if (args.isEmpty) {
+//            logger.error(s"Empty arguments ${callExpression.code}")
+//        }
         callAst(cpgCall, args.toSeq, receiverAst.headOption)
     }
 

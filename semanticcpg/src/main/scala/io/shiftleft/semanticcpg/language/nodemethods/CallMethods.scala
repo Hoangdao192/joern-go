@@ -18,7 +18,13 @@ class CallMethods(val node: Call) extends AnyVal with NodeExtension with HasLoca
     node._argumentOut.collectAll[Expression]
 
   def argument(index: Int): Expression =
-    arguments(index).head
+    try {
+      arguments(index).head
+    } catch
+      case e: NoSuchElementException =>
+        println(node._argumentOut.length)
+        println(node._argumentIn.length)
+        arguments(index).head
 
   def argumentOption(index: Int): Option[Expression] =
     node._argumentOut.collectFirst {

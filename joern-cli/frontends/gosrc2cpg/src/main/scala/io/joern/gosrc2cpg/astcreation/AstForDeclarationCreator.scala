@@ -29,6 +29,9 @@ trait AstForDeclarationCreator(implicit schemaValidationMode: ValidationMode) { 
     }
 
     private def astForFunctionDeclaration(fileName: String, functionDecl: FunctionDeclaration): Ast = {
+        if (fileName.contains("any.go") && functionDecl.name.get.name.get.equals("Is")) {
+            println("Breakpoint");
+        }
         if (functionDecl == null) {
             return Ast()
         }
@@ -46,16 +49,16 @@ trait AstForDeclarationCreator(implicit schemaValidationMode: ValidationMode) { 
                     functionDecl.fullName, functionDecl.signature, fileName
                 )
 
+                namespaceStack.push(methodNode_)
+                scope.pushNewScope(methodNode_)
+
                 var receiverAst = Ast()
                 if (functionDecl.receiver.isDefined && functionDecl.receiver.get.fields.nonEmpty) {
                     receiverAst = astForReceiver(
                         functionDecl.receiver.get.fields.head
                     )
                 }
-
-                namespaceStack.push(methodNode_)
-                scope.pushNewScope(methodNode_)
-
+                val paramAsts = params.map(param => Ast(param))
                 val bodyAst = astForStatement(fileName, functionDecl.body.get)
                 
                 scope.popScope()
@@ -69,7 +72,7 @@ trait AstForDeclarationCreator(implicit schemaValidationMode: ValidationMode) { 
 
                 methodAst(
                     methodNode_,
-                    Seq(receiverAst) ++ params.map(param => Ast(param)),
+                    Seq(receiverAst) ++ paramAsts,
                     bodyAst.head,
                     returnNode,
                     Seq(modifier)

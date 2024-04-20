@@ -45,6 +45,8 @@ class FieldAccessLinkerPass(cpg: Cpg) extends CpgPass(cpg) with LinkingUtil {
               Seq.empty
         case None =>
           logger.warn(s"Field access ${fieldAccess.code} has no base node")
+          logger.warn(call.astParent.code)
+          logger.warn(call.code)
           Seq.empty
     } else {
       Seq.empty

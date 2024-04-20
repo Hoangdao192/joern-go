@@ -5,7 +5,7 @@ import io.joern.gosrc2cpg.ast.Token
 import io.joern.x2cpg.{Ast, Defines, ValidationMode}
 import io.joern.gosrc2cpg.ast.nodes.*
 import io.shiftleft.codepropertygraph.generated.{ControlStructureTypes, DispatchTypes, Operators}
-import io.shiftleft.codepropertygraph.generated.nodes.{NewBlock, NewControlStructure, NewReturn}
+import io.shiftleft.codepropertygraph.generated.nodes.{NewBlock, NewControlStructure, NewIdentifier, NewLocal, NewReturn}
 
 import scala.collection.mutable.ListBuffer
 
@@ -14,6 +14,12 @@ trait AstForStatementCreator(implicit withSchemaValidation: ValidationMode) {
 
     def astForStatement(fileName: String, statement: Statement): Seq[Ast] = {
         statement match {
+            case deferStatement: DeferStatement =>
+                //  TODO: handle defer statement for careful
+                deferStatement.call match {
+                case Some(call) => Seq(astForExpression(fileName, call))
+                case None => Seq.empty
+            } 
             case assignStatement: AssignStatement => astForAssignStatement(fileName, assignStatement)
             case declarationStatement: DeclarationStatement => astForDeclarationStatement(fileName, declarationStatement)
             case ifStatement: IfStatement => Seq(astForIfStatement(fileName, ifStatement))
@@ -136,17 +142,47 @@ trait AstForStatementCreator(implicit withSchemaValidation: ValidationMode) {
     }
 
     private def astForTypeSwitchStatement(fileName: String, typeSwitchStatement: TypeSwitchStatement): Ast = {
-        val assignAst = astForStatement(fileName, typeSwitchStatement.assign.get)
+        val assignAsts = typeSwitchStatement.assign match {
+            case Some(assignStatement) => astForStatement(fileName, assignStatement)
+            case None => Seq.empty
+        }
 
         val switchNode = NewControlStructure()
+            .parserTypeName("SwitchStatement")
             .controlStructureType(ControlStructureTypes.SWITCH)
-            .code(assignAst.toString)
+            .code(typeSwitchStatement.code)
 
-        val switchBodyAst = astForStatement(fileName, typeSwitchStatement.body.get)
+        val switchBodyAsts = astForStatement(fileName, typeSwitchStatement.body.get)
 
-        Ast(switchNode)
-            .withChildren(Seq(switchBodyAst.head))
-            .withConditionEdge(switchNode, assignAst.head.root.get)
+        val identifierAsts = List[Ast]()
+        assignAsts.foreach(assignAst => {
+            val ident = assignAst.root match {
+                case Some(node) => node match {
+                    case identifier: NewIdentifier => Ast(identifierNode(
+                        typeSwitchStatement.assign.get, identifier.name,
+                        identifier.code, identifier.typeFullName
+                    ))
+                    case local: NewLocal =>
+                        val identNode = identifierNode(
+                            typeSwitchStatement.assign.get, local.name,
+                            local.code, local.typeFullName
+                        )
+                        val ast = Ast(identNode).withRefEdge(identNode, local)
+                        ast
+                    case _ => Ast()
+                }
+                case None => Ast()
+            }
+        })
+
+        val call = callNode(typeSwitchStatement, typeSwitchStatement.code,
+            Operators.is, Operators.is, DispatchTypes.STATIC_DISPATCH
+        )
+        val conditionAst = callAst(call, identifierAsts)
+
+        controlStructureAst(
+            switchNode, Option(conditionAst), switchBodyAsts
+        )
     }
 
     private def astForForStatement(fileName: String, forStatement: ForStatement): Ast = {

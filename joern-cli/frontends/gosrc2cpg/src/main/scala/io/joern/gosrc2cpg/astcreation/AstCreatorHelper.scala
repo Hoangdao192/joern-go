@@ -65,6 +65,8 @@ trait AstCreatorHelper(implicit withSchemaValidation: ValidationMode) {
                             fieldIdentifier.typeFullName
                         )
                         index += 1
+                        usedPrimitiveTypes.add(fieldIdentifier.typeFullName)
+                        scope.addToScope(parameterName, (parameterNodeIn, fieldIdentifier.typeFullName))
                         params.addOne(parameterNodeIn)
                     }
                 }
