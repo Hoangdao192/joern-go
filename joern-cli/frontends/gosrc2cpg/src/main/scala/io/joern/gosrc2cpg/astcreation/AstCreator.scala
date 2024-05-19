@@ -70,7 +70,7 @@ class AstCreator(rootNode: FileNode, filename: String, goModule: GoModule, prote
                 (goModule.moduleName, block, Ast(block))
         }
 
-        namespaceStack.push(namespaceAst.nodes.head)
+        namespaceStack.push(namespaceAst.root.get)
         
         val childrenAst = ListBuffer[Ast]()
         val parentPath = Paths.get(goModule.modulePath);
@@ -153,6 +153,7 @@ class AstCreator(rootNode: FileNode, filename: String, goModule: GoModule, prote
                 case None => Defines.Unknown
             }
             val typeName = identifier.typeFullName
+            usedPrimitiveTypes.add(typeName)
             val member = memberNode(
                 field, name, field.code, typeName
             )

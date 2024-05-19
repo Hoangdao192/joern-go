@@ -51,9 +51,24 @@ trait AstForSpecificationCreator(implicit schemaValidationMode: ValidationMode) 
                 val value = values(index)
                 value match
                     case literal: FunctionLiteral =>
-                        asts.addOne(
-                            astForExpression(fileName, literal)
+                        val local: NewLocal = newLocalNode(identifier)
+                        scope.addToScope(identifier.name.get, (local, identifier.typeFullName))
+                        asts.addOne(Ast(local))
+                        val call = callNode(
+                            value,
+                            value.code,
+                            Operators.assignment,
+                            Operators.assignment,
+                            DispatchTypes.STATIC_DISPATCH
                         )
+                        val leftAst = astForExpression(fileName, identifier)
+                        val rightAst = astForExpression(fileName, value)
+//                        asts.addOne(
+//                            astForExpression(fileName, literal)
+//                        )
+                        asts.addOne(callAst(
+                            call, Seq(leftAst, rightAst)
+                        ))
                     case _ =>
                         usedPrimitiveTypes.add(identifier.typeFullName)
                         val local: NewLocal = newLocalNode(identifier)
@@ -182,6 +197,7 @@ trait AstForSpecificationCreator(implicit schemaValidationMode: ValidationMode) 
             }
             case None => ("<unknown>", "<unknown>")
         }
+        usedPrimitiveTypes.add(fullname)
         val fieldAsts = structType.fields match {
             case Some(fields) => astForFieldListNode(filename, fields)
             case None => Seq.empty

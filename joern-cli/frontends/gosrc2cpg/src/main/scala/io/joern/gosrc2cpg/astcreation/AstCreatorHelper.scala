@@ -4,8 +4,8 @@ import io.joern.gosrc2cpg.ast.{GoModule, Token}
 import io.joern.gosrc2cpg.ast.nodes.*
 import io.joern.x2cpg.{Ast, Defines, ValidationMode}
 import io.joern.gosrc2cpg.Constant
-import io.shiftleft.codepropertygraph.generated.EvaluationStrategies
-import io.shiftleft.codepropertygraph.generated.nodes.{NewNamespaceBlock, NewMethod, NewMethodParameterIn, NewMethodReturn, NewUnknown}
+import io.shiftleft.codepropertygraph.generated.{EvaluationStrategies, PropertyNames}
+import io.shiftleft.codepropertygraph.generated.nodes.{NewMethod, NewMethodParameterIn, NewMethodReturn, NewNamespaceBlock, NewUnknown}
 
 import java.nio.file.Paths
 import scala.collection.mutable.ListBuffer
@@ -13,6 +13,15 @@ import scala.collection.mutable.ListBuffer
 trait AstCreatorHelper(implicit withSchemaValidation: ValidationMode) {
     this: AstCreator =>
 
+    def getTypeName(node: Node): String = {
+        node match {
+            case identifier: Identifier => identifier.typeFullName
+            case other => 
+                logger.warn(s"[GetTypeName] Unhandled node type ${node.nodeType}")
+                Defines.Unknown
+        }
+    }
+    
     def getCurrentScopeFullName(): String = {
         namespaceStack.peek() match {
             case namespaceBlock: NewNamespaceBlock => namespaceBlock.fullName
@@ -87,7 +96,7 @@ trait AstCreatorHelper(implicit withSchemaValidation: ValidationMode) {
     
     private def getFunctionReturnType(functionType: FunctionType): Identifier = {
         functionType.results match {
-            case Some(results) => {
+            case Some(results) =>
                 val fieldList: FieldList = functionType.results.get
                 val fields: ListBuffer[Field] = fieldList.fields
                 val typeName = fields.map(field => {
@@ -97,11 +106,30 @@ trait AstCreatorHelper(implicit withSchemaValidation: ValidationMode) {
                         case starExpression: StarExpression => starExpression.expression match {
                             case Some(expr) => expr match {
                                 case identifier: Identifier => identifier.typeFullName
-                                case _ => logger.warn("[getFunctionReturnType] Unhandled type expression " + expr.getClass.getTypeName)
+                                case selectorExpression: SelectorExpression => getTypeNameFromSelectorExpression(selectorExpression)
+                                case _ =>
+                                    logger.warn("[getFunctionReturnType] Unhandled type expression " + expr.getClass.getTypeName)
+                                    logger.warn(expression.code)
+                                    ""
                             }
                             case None => ""
                         }
                         case interfaceType: InterfaceType => "interface{}"
+                        case arrayType: ArrayType => astForExpression("", arrayType).root match {
+                            case Some(root) => root.properties.get(PropertyNames.TYPE_FULL_NAME)
+                            case None =>
+                                println("[getFunctionReturnType] Not handled type expression " + expression.getClass.getTypeName)
+                                ""
+                        }
+                        case selectorExpression: SelectorExpression => getTypeNameFromSelectorExpression(
+                            selectorExpression
+                        )
+                        case mapType: MapType => astForExpression("", mapType).root match {
+                            case Some(root) => root.properties.getOrElse(PropertyNames.TYPE_FULL_NAME, "unknown")
+                            case None =>
+                                println("[getFunctionReturnType] Not handled type expression " + expression.getClass.getTypeName)
+                                ""
+                        }
                         case _ =>
                             println(functionType.code)
                             println("[getFunctionReturnType] Not handled type expression " + expression.getClass.getTypeName)
@@ -111,7 +139,6 @@ trait AstCreatorHelper(implicit withSchemaValidation: ValidationMode) {
                 val identifier = Identifier()
                 identifier.name = Option(typeName)
                 identifier
-            }
             case None => {
                 val identifier = Identifier()
                 identifier.name = Option("unit")
@@ -119,7 +146,31 @@ trait AstCreatorHelper(implicit withSchemaValidation: ValidationMode) {
             }
         }
     }
-    
+
+    def getTypeNameFromSelectorExpression(selectorExpression: SelectorExpression): String = {
+        if (selectorExpression.expression.isDefined
+            && selectorExpression.expression.get.isInstanceOf[Identifier]
+            && selectorExpression.selector.isDefined
+        ) {
+            val expressionIdent = selectorExpression.expression.get.asInstanceOf[Identifier]
+            val selectorIdent = selectorExpression.selector.get
+            val exprName: String = if (!expressionIdent.typeFullName.equals("")) {
+                expressionIdent.typeFullName
+            } else {
+                expressionIdent.name.getOrElse("unknown")
+            }
+            val selectorName: String = if (!selectorIdent.typeFullName.equals("")) {
+                selectorIdent.typeFullName
+            } else {
+                selectorIdent.name.getOrElse("unknown")
+            }
+            s"$expressionIdent.$selectorIdent"
+        } else {
+            println("[getFunctionReturnType] Not handled type expression " + selectorExpression.getClass.getTypeName)
+            ""
+        }
+    }
+
     private def getFieldNodeTypeName(field: Field): Option[String] = {
         if (field.typeExpression.isDefined) {
             val typeExpression = field.typeExpression.get;
@@ -204,6 +255,8 @@ trait AstCreatorHelper(implicit withSchemaValidation: ValidationMode) {
                     case None => (Defines.Unknown, false)
                 }
                 (s"*$fullname", primitive)
+            case selectorExpression: SelectorExpression =>
+                (getTypeNameFromSelectorExpression(selectorExpression), false)
             case _ =>
                 logger.warn(s"Unhandled type expression ${expression.getClass.toString}")
                 logger.warn(s"Code: ${expression.code}")

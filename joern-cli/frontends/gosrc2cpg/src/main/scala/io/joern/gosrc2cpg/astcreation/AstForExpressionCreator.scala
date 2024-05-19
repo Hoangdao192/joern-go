@@ -7,6 +7,7 @@ import io.joern.x2cpg.{Ast, Defines, ValidationMode}
 import io.joern.gosrc2cpg.ast.nodes.{Identifier, MapType, SelectorExpression, *}
 import io.shiftleft.codepropertygraph.generated.{DispatchTypes, NodeTypes, Operators, PropertyNames}
 import io.joern.x2cpg.utils.NodeBuilders.{newFieldIdentifierNode, newIdentifierNode, newOperatorCallNode}
+import io.shiftleft.codepropertygraph.generated.nodes.{NewMethod, NewMethodRef, NewNamespaceBlock}
 
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
@@ -60,6 +61,7 @@ trait AstForExpressionCreator(implicit validationMode: ValidationMode) {
                 fileName, keyValueExpression.value.get
             )
             case arrayType: ArrayType => astForArrayType(fileName, arrayType)
+            case interfaceType: InterfaceType => astForInterfaceType(fileName, interfaceType)
             case sliceExpression: SliceExpression => astForSliceExpression(fileName, sliceExpression)
 //            case ellipsisExpression: EllipsisExpression
             case unknown =>
@@ -67,6 +69,27 @@ trait AstForExpressionCreator(implicit validationMode: ValidationMode) {
                 logger.error(unknown.code)
                 Ast()
         }
+    }
+
+    //  Handle anonymous interface
+    private def astForInterfaceType(fileName: String, interfaceType: InterfaceType): Ast = {
+        val anonymousInterfaceName = "interface" + System.currentTimeMillis()
+        usedPrimitiveTypes.add(interfaceType.code)
+        val typeDecl = typeDeclNode(
+            interfaceType,
+            interfaceType.code,
+            anonymousInterfaceName,
+            fileName,
+            interfaceType.code
+        )
+//        val modifier = typeSpecification.name.get.name.get.exists(_.isUpper) match {
+//            case true => ModifierTypes.PUBLIC
+//            case false => ModifierTypes.PRIVATE
+//        }
+        Ast.storeInDiffGraph(Ast(typeDecl), diffGraph)
+        Ast(typeRefNode(
+            interfaceType, interfaceType.code, anonymousInterfaceName
+        ))
     }
 
     private def astForSliceExpression(fileName: String, sliceExpression: SliceExpression): Ast = {
@@ -94,6 +117,43 @@ trait AstForExpressionCreator(implicit validationMode: ValidationMode) {
         )
 
         callAst(call, Seq(expressionAst, lowAst, highAst, maxAst))
+    }
+
+    private def astForMapType(fileName: String, mapType: MapType): Ast = {
+        val keyAst = mapType.key match {
+            case Some(key) => astForExpression(fileName, key)
+            case None =>
+                println("[astForMapType] Not found key")
+                println(mapType.code)
+                Ast()
+        }
+        val valueAst = mapType.value match {
+            case Some(value) => astForExpression(fileName, value)
+            case None =>
+                println("[astForMapType] Not found value")
+                println(mapType.code)
+                Ast()
+        }
+        val keyName = keyAst.root match {
+            case Some(root) => root.properties.getOrElse(PropertyNames.TYPE_FULL_NAME, "unknown")
+            case None => "unknown"
+        }
+        if (keyName.equals("unknown")) {
+            println("[astForMapType] Not found root when parse key ast")
+            println(mapType.code)
+        }
+        val valueName = valueAst.root match {
+            case Some(root) => root.properties.getOrElse(PropertyNames.TYPE_FULL_NAME, "unknown")
+            case None => "unknown"
+        }
+        if (valueName.equals("unknown")) {
+            println("[astForMapType] Not found root when parse value ast")
+            println(mapType.code)
+        }
+        val typeName = s"map[$keyName]$valueName"
+        Ast(newIdentifierNode(
+            typeName, typeName
+        ))
     }
 
     private def astForArrayType(fileName: String, arrayType: ArrayType): Ast = {
@@ -266,11 +326,28 @@ trait AstForExpressionCreator(implicit validationMode: ValidationMode) {
             returnNode
         )
         scope.popScope()
+
+        // Setting Lambda TypeDecl as its parent.
+        val (parentType, parentFullname) = scope.current() match {
+            case Some(element) => element.scopeNode match {
+                case newNamespaceBlock: NewNamespaceBlock =>
+                    (NodeTypes.NAMESPACE_BLOCK, newNamespaceBlock.fullName)
+                case method: NewMethod =>
+                    (NodeTypes.METHOD, method.fullName)
+                case other =>
+                    logger.warn(s"Unhandled lambda parent type ${other.getClass.toString}")
+                    (Defines.Unknown, Defines.Unknown)
+            }
+            case None =>
+                logger.warn("Lambda not have parent")
+                (Defines.Unknown, Defines.Unknown)
+        }
         val funcDecl = typeDeclNode(functionLiteral,
-            fullname, fullname, fileName, functionLiteral.code
+            fullname, fullname, fileName, functionLiteral.code,
+            parentType, parentFullname
         )
         Ast.storeInDiffGraph(Ast(funcDecl), diffGraph)
-        // Setting Lambda TypeDecl as its parent.
+
         method.astParentType(NodeTypes.TYPE_DECL)
         method.astParentFullName(fullname)
         Ast.storeInDiffGraph(methodAst_, diffGraph)
@@ -372,9 +449,26 @@ trait AstForExpressionCreator(implicit validationMode: ValidationMode) {
                     arrayType.code,
                     Seq()
                 )
+            case functionLiteral: FunctionLiteral =>
+                val funcLiteralAst = astForFunctionLiteral(fileName, functionLiteral)
+                funcLiteralAst.root match {
+                    case Some(root) =>
+                        root match {
+                            case methodNode: NewMethodRef =>
+                                (methodNode.methodFullName, methodNode.methodFullName, methodNode.methodFullName, "", Seq.empty)
+                            case _ =>
+                                logger.warn("Unhandled function literal when parse call")
+                                logger.warn(callExpression.code)
+                                ("", "", "", "", Seq.empty)
+                        }
+                    case None =>
+                        logger.warn("Unhandled function literal when parse call")
+                        logger.warn(callExpression.code)
+                        ("", "", "" , "", Seq())
+                }
             case x =>
-                logger.warn(callExpression.code)
                 logger.warn(s"Unhandled class ${x.getClass}")
+                logger.warn(callExpression.code)
                 ("", "", "" , "", Seq())
     }
 
@@ -426,15 +520,30 @@ trait AstForExpressionCreator(implicit validationMode: ValidationMode) {
         compositeLiteral.typeExpression match {
             case Some(typeExpression) => compositeLiteral.typeExpression.get match {
                 case arrayType: ArrayType => astForArrayInitialization(fileName, compositeLiteral)
+                case mapType: MapType => astForMapInitialization(fileName, compositeLiteral)
                 case identifier: Identifier => astForConstructor(fileName, compositeLiteral)
                 case selectorExpression: SelectorExpression => astForConstructor(fileName, compositeLiteral)
                 case expression => {
-                    logger.warn(s"Unhandled type of composite literal ${expression.nodeType}")
+                    logger.warn(s"Unhandled type of composite literal ${expression.nodeType} in $fileName")
+                    logger.warn(expression.code)
                     Ast()
                 }
             }
             case None => Ast()
         }
+    }
+
+    private def astForMapInitialization(fileName: String, compositeLiteral: CompositeLiteral): Ast = {
+        val call = callNode(
+            compositeLiteral,
+            compositeLiteral.code,
+            "<operator>.mapInitializer",
+            "<operator>.mapInitializer",
+            DispatchTypes.STATIC_DISPATCH
+        )
+        val args = ListBuffer[Ast]()
+        val elements = compositeLiteral.elements.map(element => astForExpression(fileName, element)).toList
+        callAst(call, elements)
     }
 
     private def astForArrayInitialization(fileName: String, compositeLiteral: CompositeLiteral): Ast = {

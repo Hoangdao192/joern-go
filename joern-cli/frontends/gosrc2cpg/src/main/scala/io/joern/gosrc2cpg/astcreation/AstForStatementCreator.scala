@@ -5,7 +5,7 @@ import io.joern.gosrc2cpg.ast.Token
 import io.joern.x2cpg.{Ast, Defines, ValidationMode}
 import io.joern.gosrc2cpg.ast.nodes.*
 import io.shiftleft.codepropertygraph.generated.{ControlStructureTypes, DispatchTypes, Operators}
-import io.shiftleft.codepropertygraph.generated.nodes.{NewBlock, NewControlStructure, NewIdentifier, NewLocal, NewReturn}
+import io.shiftleft.codepropertygraph.generated.nodes.{NewBlock, NewControlStructure, NewIdentifier, NewJumpTarget, NewLocal, NewReturn}
 
 import scala.collection.mutable.ListBuffer
 
@@ -31,6 +31,7 @@ trait AstForStatementCreator(implicit withSchemaValidation: ValidationMode) {
             case blockStatement: BlockStatement => Seq(astForBlockStatement(fileName, blockStatement))
             case branchStatement: BranchStatement => Seq(astForBranchStatement(fileName, branchStatement))
             case returnStatement: ReturnStatement => Seq(astForReturnStatement(fileName, returnStatement))
+            case labeledStatement: LabeledStatement => astForLabeledStatement(fileName, labeledStatement)
             case expressionStatement: ExpressionStatement => expressionStatement.expression match {
                 case Some(expression) => Seq(astForExpression(fileName, expression))
                 case None => Seq()
@@ -40,6 +41,23 @@ trait AstForStatementCreator(implicit withSchemaValidation: ValidationMode) {
                 logger.error(s"Unhandled statement node ${unknown.nodeType}")
                 Seq()
         }
+    }
+
+    private def astForLabeledStatement(fileName: String, labeledStatement: LabeledStatement): Seq[Ast] = {
+        val cpgLabel =  NewJumpTarget()
+            .parserTypeName(labeledStatement.nodeType)
+            .name(labeledStatement.label match {
+                case Some(identifier) => identifier.name.getOrElse("")
+                case None => 
+                    logger.warn("Label statement does not have label name")
+                    ""
+            })
+            .code(labeledStatement.code)
+        val nestedStmts = labeledStatement.statement match {
+            case Some(statement) => astForStatement(fileName, statement)
+            case None => Seq.empty
+        }
+        Ast(cpgLabel) +: nestedStmts
     }
 
     private def astForCaseClause(fileName: String, caseClause: CaseClause): Seq[Ast] = {
@@ -301,15 +319,14 @@ trait AstForStatementCreator(implicit withSchemaValidation: ValidationMode) {
             case Token.Break => ControlStructureTypes.BREAK
             case Token.Continue => ControlStructureTypes.CONTINUE
             case Token.Goto => ControlStructureTypes.GOTO
-            case _ => null
+            case _ =>
+                logger.warn("Unhandled branch statement token")
+                null
         }
 
-        //  Handle code
-        val controlNode = NewControlStructure()
-            .controlStructureType(controlStructureType)
-            .code(branchStatement.toString)
-
-        Ast(controlNode)
+        Ast(controlStructureNode(
+            branchStatement, controlStructureType, branchStatement.code
+        ))
     }
 
     private def astForDeclarationStatement(fileName: String, declarationStatement: DeclarationStatement): Seq[Ast] = {
